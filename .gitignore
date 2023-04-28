@@ -1,0 +1,15 @@
+target
+classes
+checkouts
+otus-01/.nrepl-port
+logs
+.lein-*
+.idea
+.cpcache
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+*.iml
+.hgignore
+.hg/
