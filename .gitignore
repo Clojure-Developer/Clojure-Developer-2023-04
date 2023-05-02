@@ -13,6 +13,6 @@ pom.xml.asc
 *.iml
 .hgignore
 .hg/
-.clj-kondo
+clj-kondo
 .calva
 .lsp
