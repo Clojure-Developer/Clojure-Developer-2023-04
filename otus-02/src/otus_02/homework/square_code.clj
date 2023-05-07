@@ -1,4 +1,5 @@
-(ns otus-02.homework.square-code)
+(ns otus-02.homework.square-code
+  (:require [clojure.string :as s]))
 
 ;; Реализовать классический метод составления секретных сообщений, называемый `square code`.
 ;; Выведите закодированную версию полученного текста.
@@ -48,9 +49,44 @@
 "aohghn "
 "sseoau "
 
+(defn square-code
+  "Кодирует или декодирует текст квадратным кодом. Параметры:
+  * text          - входная строка,
+  * del-separator - удалять последний символ при формировании квадрата или нет,
+  * add-separator - добавлять разделитель при объединении строк квадрата или нет."
+  [text del-separator add-separator]
+  (let [;; считаем получившуются длину
+        lnth (count text)
+        ;; определяем количество строк
+        rows (int (Math/sqrt lnth))
+        ;; определяем количество столбцов
+        cols (+ rows (if (= lnth (* rows rows)) 0 1))
+        ;; паддинг
+        padd (s/join (repeat cols " "))
+        ;; формируем исходную матрицу
+        sqre (map (if del-separator
+                    ;; при декодировании нужно удалить пробел, добавленный
+                    ;; в момент объединения строк 
+                    (comp s/join butlast)
+                    ;; при кодировании просто объединяем строки
+                    s/join)
+                  (partition cols cols padd text))]
+    ;; транспонируем матрицу и объединяем строки
+    (s/join (if add-separator " " "")
+            (map s/join (apply mapv vector sqre)))))
 
 
-(defn encode-string [input])
+(defn encode-string
+  "Кодирует сообщение квадратным кодом."
+  [input]
+  (-> input
+      s/lower-case
+      (s/replace #"[\p{Punct}\s]" "")
+      (square-code false true)))
 
-
-(defn decode-string [input])
+(defn decode-string
+  "Декодирует сообщение, закодированное квадратным кодом."
+  [input]
+  (-> input
+      (square-code true false)
+      s/trimr))
