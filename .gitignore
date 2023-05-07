@@ -1,7 +1,7 @@
 target
 classes
 checkouts
-otus-01/.nrepl-port
+.nrepl-port
 logs
 .lein-*
 .idea
@@ -13,6 +13,6 @@ pom.xml.asc
 *.iml
 .hgignore
 .hg/
-clj-kondo
+.clj-kondo
 .calva
 .lsp

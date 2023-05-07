@@ -1,4 +1,4 @@
-### Clojure Developer. Урок 1
+## Clojure Developer. Урок 1
 
 Необходимо установить:
 - JDK (https://sdkman.io/)
