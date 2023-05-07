@@ -9,9 +9,9 @@
          "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau "))
 
   (is (= (sut/decode-string "imtgdvs fearwer mayoogo anouuio ntnnlvt wttddes aohghn  sseoau ")
-         "If man was meant to stay on the ground, god would have given us roots."))
+         "ifmanwasmeanttostayonthegroundgodwouldhavegivenusroots"))
 
   (is (= (sut/decode-string
           (sut/encode-string "If man was meant to stay on the ground, god would have given us roots."))
-         "If man was meant to stay on the ground, god would have given us roots.")))
+         "ifmanwasmeanttostayonthegroundgodwouldhavegivenusroots")))
 
