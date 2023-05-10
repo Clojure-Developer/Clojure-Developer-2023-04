@@ -16,4 +16,16 @@
 ;; Еще пример HARRY и SALLY. Ответ будет - 2, так как общий элемент у них AY
 
 
-(defn common-child-length [fist-string second-string])
+(defn common-child-length [first-string second-string]
+  (cond
+    (or (empty? first-string) (empty? second-string)) 0
+    (= (last first-string) (last second-string))
+       ( + 1 (common-child-length
+              (subs first-string 0 (- (count first-string) 1))
+              (subs second-string 0 (- (count second-string) 1))))
+    :else (max (common-child-length first-string 
+                      (subs second-string 0 (- (count second-string) 1)))
+               (common-child-length (subs first-string 0 (- (count first-string) 1))
+                      second-string))
+    ))
+
