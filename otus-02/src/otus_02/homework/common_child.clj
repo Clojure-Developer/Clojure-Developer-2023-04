@@ -26,16 +26,12 @@
       (let [y        (first y-seq)
             top-left (first row)
             top      (first (rest row))
-            left     (first next-row)]
-        (if (= x y)
+            left     (first next-row)
+            d        (if (= x y) (inc top-left) (max top left))]
           (recur
             (rest y-seq)
             (rest row)
-            (conj next-row (inc top-left)))
-          (recur
-            (rest y-seq)
-            (rest row)
-            (conj next-row (max top left))))))))
+            (conj next-row d))))))
 
 ;; По сути это задача на нахождение LCS (longest common subsequence)
 ;; Решение - dynamic programming, но без хранения всей таблицы в памяти, а только 2х строк: предыдущей и текущей
