@@ -16,3 +16,4 @@ pom.xml.asc
 .clj-kondo
 .calva
 .lsp
+.DS_Store
