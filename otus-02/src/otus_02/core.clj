@@ -38,18 +38,25 @@
 
 ;; импортируем только то что нужно
 (require '[otus-02.conditionals :refer [ten eleven]])
+(require '[otus-02.conditionals])
 (require '[otus-02.conditionals :refer [eleven] :rename {eleven twelve}])
+(println eleven)
 
 (use '[otus-02.conditionals])
 
 
 (ns-publics 'otus-02.conditionals)
+
 (ns-resolve 'otus-02.conditionals 'eleven)
 
 (find-ns 'my-new-namespace)
-;; (create-ns 'my-new-namespace)
+(create-ns 'my-new-namespace)
 
 (require '[clojure.java.classpath])
 
 
 (System/getProperty "java.class.path")
+
+(require '[clojure.repl :refer :all])
+
+(doc require)

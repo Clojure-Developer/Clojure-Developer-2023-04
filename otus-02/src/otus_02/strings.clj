@@ -37,7 +37,7 @@
 (get-price 1.26)
 
 
-(format "$ %f" 1.259345353)
+(format "$ %.2f" 1.259345353)
 (format "Local time: %tT" (LocalDateTime/now))
 
 
@@ -50,7 +50,7 @@
 
 
 
-(reverse "hello dude")
+(apply str (reverse "hello dude"))
 
 (apply str (reverse "hello dude"))
 
