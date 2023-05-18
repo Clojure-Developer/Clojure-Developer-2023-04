@@ -9,6 +9,8 @@
 ;; = identical?
 (= 1 1)
 
+(= (sorted-set 1 2) (sorted-set 2 1 4))
+
 (= 1 2)
 
 (= {:a 1 :b 2}
@@ -38,6 +40,8 @@
 
 (<= 1 1)
 
+;; error (<= "1" 1)
+
 
 
 ;; only two falsey values
@@ -60,25 +64,25 @@ false nil
 
 (or nil 3 4)
 
-(or (= 1 2)
+(or (= 1 1)
     (zero? (- 2 2)))
-
 
 
 ;; if if-not when when-not
 (def n 1)
 
 (if (= n 1)
-  "one"
+  (println "one")
   "not one")
 
 (not true)
 (not false)
 
 (if (not (> n 1))
-  "less than one"
+  "less than one or equals"
   "more than one")
 
+;;TODO: clarify for myself
 (if-not (> n 1)
   (let []
     (+ 1 2)
@@ -90,11 +94,11 @@ false nil
 (if (> n 1)
   "less than one")
 
-(when (> n 1)
-  (println "less than one")
-  (+ 2 2)
-  ())
+(when-not (> n 1)
+  (println "less than one or equals")
+  (println 4))
 
+(= nil nil)
 
 
 ;; case
@@ -123,7 +127,7 @@ false nil
   (> n 0) "positive"
   :else "zero")
 
-
+(def n 3)
 (condp = n
   1 "one"
   2 "two"
