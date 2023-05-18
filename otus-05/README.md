@@ -10,13 +10,13 @@
 
 #### Локальные копии
 
-Здесь вы можете найти пример "локальной копии внешней библиотеки": [./checkouts/example]().
+Здесь вы можете найти пример "локальной копии внешней библиотеки": [](./checkouts/example).
 
-**Внимание:** перед началом работы с кодом этого проекта вам нужно зайти в [./checkouts/example]() и выполнить там `lein install`. Эта команда установит пакет в локальный реестр пакетов Maven (обычно он находится в `~/.m2/`). После выполнения этой команды пакет будет доступен для "установки" в текущий проект — lein сможет его подключить.
+**Внимание:** перед началом работы с кодом этого проекта вам нужно зайти в [](./checkouts/example) и выполнить там `lein install`. Эта команда установит пакет в локальный реестр пакетов Maven (обычно он находится в `~/.m2/`). После выполнения этой команды пакет будет доступен для "установки" в текущий проект — lein сможет его подключить.
 
 ### Исключения
 
-Обрабатываются ошибки с помощью [https://clojuredocs.org/clojure.core/try](try)/[https://clojuredocs.org/clojure.core/catch](catch)/[https://clojuredocs.org/clojure.core/finally](finally). Кидаются с помощью [https://clojuredocs.org/clojure.core/throw](throw).
+Обрабатываются ошибки с помощью [try](https://clojuredocs.org/clojure.core/try)/[catch](https://clojuredocs.org/clojure.core/catch)/[finally](https://clojuredocs.org/clojure.core/finally). Кидаются с помощью [throw](https://clojuredocs.org/clojure.core/throw).
 
 ```clojure
 (try
@@ -32,6 +32,6 @@
 
 ### Классы Java
 
-Подробнее читаем тут: [https://clojure.org/reference/java_interop](Java interop).
+Подробнее читаем тут: [Java interop](https://clojure.org/reference/java_interop).
 
-Любой класс перед использованием нужно импортировать. Это делается с помощью функции [https://clojuredocs.org/clojure.core/import](import) или с помощью соответствующей опции макроса [https://clojuredocs.org/clojure.core/ns](ns).
+Любой класс перед использованием нужно импортировать. Это делается с помощью функции [import](https://clojuredocs.org/clojure.core/import) или с помощью соответствующей опции макроса [ns](https://clojuredocs.org/clojure.core/ns).
