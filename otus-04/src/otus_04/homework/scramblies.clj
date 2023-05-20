@@ -7,4 +7,5 @@
   "Функция возвращает true, если из букв в строке letters
   можно составить слово word."
   [letters word]
-  nil)
+  (let [letters-set (set letters)]
+    (every? (partial contains? letters-set) word)))
