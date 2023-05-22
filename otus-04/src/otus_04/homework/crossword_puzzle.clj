@@ -1,8 +1,10 @@
 (ns otus-04.homework.crossword-puzzle
   (:require [clojure.string :as str]))
 
-(defn group-by-matches [words mask]
-  (group-by (partial re-matches mask) words))
+(defn split-by-mask [words mask]
+  (let [grouped (group-by #(boolean (re-matches mask %)) words)]
+    [(get grouped true) (get grouped false)]))
+
 (defn make-mask
   "Переводим вектор (список) вида 'M--C--' в регулярное выражение"
   [mask]
@@ -77,7 +79,7 @@
         (and (= cell \-) (= nearest-cell \-)))
       false)))
 
-(defn veritcal?
+(defn vertical?
   "Находимся ли мы на вертикальной линии кросворда,
   предполагая row и col это свободная ячейка '-'"
   [board row col]
@@ -111,7 +113,6 @@
    (loop [new-row row]
      (if (valid-position? board new-row col)
        (let [cell (get-in board [new-row col])]
-         (println [new-row col] cell)
          (if (= cell \-)
            (recur (dec new-row))
            (inc new-row)))
@@ -148,22 +149,33 @@
 LONDON;DELHI;ICELAND;ANKARA")
 (def board (:board (parse-input input)))
 
+(defn get-blank-line
+  [board row col]
+  (cond
+    (horizontal? board row col)
+    (let [start (get-horizontal-start board row col)]
+      {:line (get-horizontal board row start) :type 'horizontal})
+
+    (vertical? board row col)
+    (let [start (get-vertical-start board row col)]
+      {:line (get-vertical board start col) :type 'vertical})
+
+    :else nil))
+
 ;; Идем либо в горизноталь либо в вертикаль - в любом случае получаем список слов которые "подходят" и оставшиеся
 ;; Возварщаем так же "тип" (вертикаль или горизонталь)
 ;; Если тип не подходит - возвращаем подходящие как пустой список
 ;; Потом (в другой функции) перебираем подходящие, вставляя в борду и рекурсиво запускаем солвер на U от оставшиеся подходящие + оставшиеся
 (defn make-one-step
   [board words]
-  (let [[row col] (find-free-cell board)]
-    (cond
-      ((horizontal? board row col)
-       (let [start      (get-horizontal-start board row col)
-             horizontal (get-horizontal board row start)
-             mask       (make-mask horizontal)
-             matches    (group-by-matches words mask)])))
-
-    (println row col)))
-
+  (let [[row col]         (find-free-cell board)
+        blank-line-result (get-blank-line board row col)]
+    (if (some? blank-line-result)
+      (let [{line :line type :type} blank-line-result
+            mask                    (make-mask line)
+            [matches other]         (split-by-mask words mask)]
+        {:matches matches :other other :type type})
+      nil)))
 
 (defn solve
   "Возвращает решённый кроссворд. Аргумент является строкой вида
@@ -186,10 +198,3 @@ LONDON;DELHI;ICELAND;ANKARA")
   сверху-вниз или слева-направо."
   [input]
   "")
-
-
-
-
-
-
-
