@@ -16,20 +16,21 @@
           (#(map vec %))
           (set))]))
 (defn cell? [field [x y]]
-  (not= \+ (get-in field [y x] \+))
-  )
+  (not= \+ (get-in field [y x] \+)))
+  
 
 (defn refine-pos 
   "Уточняет позицию начала слова, захватывая смежные буквы"
   ([x y field]
    (if (cell? field [(dec x) y])
      (refine-pos x y -1 0 field)
-     (refine-pos x y 0 -1 field)
-     ))
+     (refine-pos x y 0 -1 field)))
+     
   ([x y dx dy field]
-   (if (cell? field [(+ x dx) (+ y dy) ])
-       (recur (+ x dx) (+ y dy) dx dy field)
-       [x y])))
+   (let [nx (+ x dx) ny (+ y dy)]
+     (if (cell? field [nx ny])
+       (recur nx ny dx dy field)
+       [x y]))))
 
 (defn find-free-pos
   "Найти первую незанятую позицию для слова"
@@ -67,31 +68,6 @@
                                          (rest word))
           :else nil)))))
 
-
-
-;; (defn match-word 
-;;   "Подобрать слово для пустой позиции.
-;;    В случае неудачи вернуть nil"
-;;   [field words]
-;;   (let [pos (find-free-pos field)
-;;         size (count words)]
-;;     (loop [idx 0]
-;;       (let [new-field (insert-word field pos (words idx))]
-;;         (if (nil? new-field)
-;;           (if (< idx (dec size))
-;;             ;; Слово не подошло. Есть еще. Пробуем дальше
-;;             (recur (inc idx))
-;;             ;; Слова кончились подходящего не найдено
-;;             nil)
-;;           (if (= 1 size)
-;;             ;; Слово подошло и оно было последнее. Подобрали все! 
-;;             new-field
-;;             ;; Слово подошло углубляем поиск
-;;             (let [new-field (match-word new-field (remove-vec words idx))]
-;;               (if (nil? new-field)
-;;                 (if (< idx size) (recur (inc idx)) nil)
-;;                 new-field))))))))
-
 (defn match-word [field words]
    (let [pos (find-free-pos field)]
      (loop [candidats words]
@@ -108,9 +84,8 @@
                (if-let [field-down (match-word new-field (disj words candidat))]
                  field-down
                  ;; Углубление не задалось. Ищем нового кандидата
-                 (recur (disj candidats candidat)))
-               )))))
-  ))
+                 (recur (disj candidats candidat))))))))))
+               
 
 (defn solve
   "Возвращает решённый кроссворд. Аргумент является строкой вида
