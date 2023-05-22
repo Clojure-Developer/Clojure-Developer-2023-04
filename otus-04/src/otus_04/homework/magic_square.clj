@@ -9,17 +9,17 @@
 (defn filled? [board x y] (pos? (cell board x y)))
 
 (defn update-cell [board x y v]
-  (update-in board [y x] (constantly v)))
+  (assoc-in board [y x] v))
 
 (defn up-right-move [board x y]
   (let [n (count board)
-        x' (mod (+ x  1) n)
-        y' (mod (+ y -1) n)]
+        x' (mod (inc x) n)
+        y' (mod (dec y) n)]
     [x' y']))
 
 (defn down-move [board x y]
   (let [n (count board)
-        y' (mod (+ y 1) n)]
+        y' (mod (inc y) n)]
     [x y']))
 
 (defn next-move [board x y]

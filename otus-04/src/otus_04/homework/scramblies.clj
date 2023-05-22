@@ -3,28 +3,23 @@
 ;; Оригинальная задача:
 ;; https://www.codewars.com/kata/55c04b4cc56a697bb0000048
 
-(defn count-letters [word]
+(defn collect-stats [step initial-stats elems]
   (reduce
-    (fn [stat ch]
-      (let [cnt (get stat ch 0)]
-        (assoc stat ch (inc cnt))))
-    {}
-    word))
+    (fn [stat key]
+      (let [value (get stat key 0)]
+        (assoc stat key (step value))))
+    initial-stats
+    elems))
 
-(defn de-count-letters [init-stat word]
-  (reduce
-    (fn [stat ch]
-      (let [cnt (get stat ch 0)]
-        (assoc stat ch (dec cnt))))
-    init-stat
-    word))
+(def count-letters (partial collect-stats inc {}))
+(def subtract-letters (partial collect-stats dec))
 
 (defn scramble?
   "Функция возвращает true, если из букв в строке letters
   можно составить слово word."
   [letters word]
   (let [stat-letters (count-letters letters)
-        result-stat  (de-count-letters stat-letters word)
+        result-stat  (subtract-letters stat-letters word)
         with-neg-values (filter (fn [[_ v]] (neg? v)) result-stat)]
     (zero? (count with-neg-values))))
 
