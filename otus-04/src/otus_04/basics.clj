@@ -3,74 +3,74 @@
 ;; * Описание коллекций
 ;; ** Списки
 
-'(list 1 (+ 2 5) 3 4)
-(list 1 (+ 2 5) 3 4)
-'(1 (2 + 5) / 3 * 4)
+'(1 2 3)
+(quote (1 2 3))
+'(1 (+ 1 1) 3)
+'(1 2 3)
+
+(list 1 (+ 1 1) 3)
 
 (cons 1 (cons 2 (cons 3 ())))
 
 ;; ** Вектора
 
 (vector 1 2 3)
-[1, 2, 3]
-
-(vec '(1 2 3)) ;; converts smth to vector
+[1 (+ 1 1) 3]
+(vec '(1 2 3))
 
 ;; ** Отображения
 
-(hash-map :a 1
-          :b 3
-          :c 4)
-
 {:a 1
+ :b 2
  "asd" 3
- [12 45 "red"] 42}
+ [:a '(7 'foo)] :oops}
+
+(hash-map :a 1
+          :b 3)
 
 ;; ** Множества
 
 #{1 2 3}
-#{[1] () "asd" 43}
 
-(set '(1 2 2 3))
+(set [1 2 2 3])
 
 ;; * Получение доступа к элементам
 ;; ** get,nth,first,last,rest
 
-(get [:a :b :c] 5 :oops)
-(get {:a 1 :b 2} :c)
-(get nil :c)
-(get '(1 2 3) :c) ;; always nil
-(get #{1 2 3} 5)
+(first '(1 2 3))
+(first [1 2 3])
+(first {:a 1 :b 2 :c 3})
+(last '(1 2 3))
+(last [1 2 3])
 
-(first {:a 1}) ;; returns a pair
+(nth [:a :b :c] 5 :oops)
+(nth '(:a :b :c) 2)
+
+(next (next [1]))
+
+(get [:a :b :c] 5 :oops)
+(get {:a 1 :b 2} :c :oops)
+
+(get (get {} :a) 1)
+(get #{1 2 3} 2)
 
 ;; ** Коллекции как функции
 
 ({:a 1 :b 2} :a)
 
-(#{1 2 3} 4)
+(#{1 2 3} 2)
 
 (:a {:a 1 :b 2})
 
 ;; * Модификация коллекций
 ;; ** Добавление
 
-(conj {} [:a 1] [:b 2])
+(conj '(1 2 3) 4 5)
+(conj [1 2 3] 4 5)
+(conj {:a 1 :b 2} [:c 3] [:a 5])
+(conj #{1 2} 3)
 
-(conj '(1 2 3) 4)
-(pop '(4 1 2 3))
-
-(defn test-as-stack [coll]
-  (let [s (conj coll 4)]
-    [(peek s)
-     (pop s)]))
-
-(test-as-stack [1 2 3])
-
-(conj #{1 2 3} 3)
-
-(assoc [1 2 3] 1 :foo)
-(assoc {:a 1 :b 2} :a 100)
+(assoc {:a 1 :b 2} :c 3 :d 5)
 
 ;; ** Удаление ключей
 
@@ -78,34 +78,41 @@
 
 ;; ** Обновление
 
-(update [1 2 3] 1 + 100 50)
-(update {:a 1 :b 2} :a + 100 50)
+(assoc {:a 1} :a 3)
+(assoc [1 2 3] 3 :foo)
+
+(update [1 2 3] 1 + 100 50) ;; (+ 2 100 50)
+(update {:a 1 :b 2} :a inc)
 
 ;; * Работа с последовательностями
 ;; ** Отображение значений
 
-(map + '(1 2 3) [10 20 30 40])
-(map identity {:a 1 :b 22})
-(mapv + '(1 2 3) [10 20 30 40])
+(map inc '(1 2 3))
+(map dec [4 5 6])
+(mapv dec [4 5 6])
+
+(map identity {:a 1 :b 2})
+
+(map + [1 2 3] '(10 20 30 40))
 
 ;; ** Фильтрация
 
-(filter odd? [1 2 3 4 5])
-(filterv odd? [1 2 3 4 5])
+(filter odd? '(1 2 3 4 5))
+(filterv odd? '(1 2 3 4 5))
 
 ;; ** Агрегация
 
-(reduce + 10 [1 2 3]) ;; (10 + 1 + 2 + 3)
-(reduce conj [] '(1 2 3 4))
-(reduce conj [] ())
+(reduce + [1 2 3 4 5]) ;; (1 + 2 + 3 + 4 + 5)
+(reduce + 100 [1 2 3]) ;; (100 + 1 + 2 + 3)
+(reduce conj [] '(1 2 3 4)) ;; (conj (conj [] 1) 2) ...
 
 ;; ** List comprehensions
 
 (for [x [1 2 3]
-      y [10 20 30]
+      y [10 20 31 40]
       :let [z (+ x y)]
-      :while (< z 25)]
-  z)
+      :when (odd? z)]
+  )
 
 ;; * Вложенные структуры
 
@@ -130,30 +137,46 @@
      :pets [{:kind :cat
              :name "Fatcat"}]}]})
 
-(get (last (get data :users)) :name)
-(get-in data [:users 0 :pets 0 :name])
+(get-in data [:users 0 :pets 5 :name] :oops)
 (update-in data [:users 0 :age] inc)
+;; data["users"][0]["age"] += 1
 
 ;; * Деструктуризация
 
-(let [coords [100 [200 3 4 4 5 ]]
-      [_ & ys] coords]
-  ys)
+(let [line [[10 10] [10 100]]
+      [[x1 _] [x2 _]] line]
+  (= x1 x2))
 
-(let [point {:x 100 :y 200 :color "red"}
-      {:keys [x y]} point]
+(let [[_ x & xs] {:a 1 :b 2 :c 3}]
+  [x xs])
+
+(let [line {:begin {:x 100 :y 100}
+            :end {:x 200 :y 100}}
+
+      {{:keys [x y]} :begin} line]
   [x y])
 
-(defn first-users-name
-  [{[{n :name} & _] :users}]
+(defn name-of-first-user [data]
+  (let [{[{n :name}] :users} data]
+    n))
+
+(name-of-first-user data)
+
+(defn name-of-first-user [{[{n :name}] :users}]
   n)
 
-(first-users-name data)
+(defn my+ [x & xs]
+  (apply + x xs))
 
-(for [{ps :pets} (:users data)
-      {n :name} ps]
-  n)
+(my+ 1 2 3 4 5)
 
+(defn vertical? [[[x1 _] [x2 _]]]
+  (= x1 x2))
+
+(let [line [[10 10] [10 100]]]
+  (vertical? line))
+
+;; ** комплексный пример
 (set
  (for [{ps1 :pets n1 :name} (:users data)
        {ps2 :pets n2 :name} (:users data)
