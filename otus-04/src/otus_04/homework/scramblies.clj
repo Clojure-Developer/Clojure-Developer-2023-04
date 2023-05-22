@@ -27,3 +27,4 @@
         result-stat  (de-count-letters stat-letters word)
         with-neg-values (filter (fn [[_ v]] (neg? v)) result-stat)]
     (zero? (count with-neg-values))))
+
