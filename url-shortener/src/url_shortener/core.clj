@@ -1,5 +1,8 @@
 (ns url-shortener.core
-  (:require [clojure.string :as string]))
+  (:gen-class)
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as string]))
 
 
 (def symbols
@@ -25,43 +28,74 @@
     (string/join (reverse code-sequence))))
 
 
-(comment
- (id->url 12345))
-
 
 ;; =============================================================================
 ;; String -> Number
 ;; =============================================================================
-
-(def a-code (int \a))
-(def z-code (int \z))
-(def A-code (int \A))
-(def Z-code (int \Z))
-(def code-0 (int \0))
-(def code-9 (int \9))
 
 
 (defn url->id [url]
   (let [url-symbols (seq url)]
     (reduce
      (fn [id symbol]
-       (let [char-code (int symbol)]
-         (cond (<= a-code char-code z-code)
-               (+ (* id 62)
-                  (- char-code a-code))
-
-               (<= A-code char-code Z-code)
-               (+ (* id 62)
-                  (- char-code A-code)
-                  26)
-
-               (<= code-0 char-code code-9)
-               (+ (* id 62)
-                  (- char-code code-0)
-                  52))))
+       (+ (* id 62)
+          (string/index-of symbols symbol)))
      0
      url-symbols)))
 
 
+
+;; =============================================================================
+;; Application API
+;; =============================================================================
+
+
+(def db
+  (io/as-file "url.txt"))
+
+
+(def host "http://otus-url/")
+
+
+(defn shorten-url [url]
+  (spit db url :append true)
+  (spit db \newline :append true)
+
+  (with-open [file (io/reader db)]
+    (let [url-id (count (line-seq file))
+          hash   (id->url url-id)]
+      (println "Your short URL:" (str host hash)))))
+
+
+(defn find-long-url [url]
+  (let [hash        (subs url (count host))
+        line-number (url->id hash)]
+    (with-open [file (io/reader db)]
+      (let [original-url (nth (line-seq file) (dec line-number))]
+        (println "Your original URL:" original-url)))))
+
+
+
+(defn -main [command url]
+  (when-not (.exists db)
+    (.createNewFile db))
+
+  (case command
+    "shorten" (shorten-url url)
+    "find" (find-long-url url)
+    (println "Unknown command:" command)))
+
+
+
 (comment
- (url->id "dnh"))
+
+ (-main "shorten" "https://clojure.org/about/rationale")
+ (-main "shorten" "https://otus.ru/lessons/clojure-developer/")
+
+ (-main "find" "http://otus-url/b")
+ (-main "find" "http://otus-url/c"))
+
+;; lein run shorten "https://clojure.org/about/rationale"
+
+;; lein uberjar
+;; java -jar url-shortener.jar shorten "https://clojure.org/about/rationale"

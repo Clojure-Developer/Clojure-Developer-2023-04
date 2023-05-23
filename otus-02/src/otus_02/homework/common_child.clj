@@ -16,4 +16,7 @@
 ;; Еще пример HARRY и SALLY. Ответ будет - 2, так как общий элемент у них AY
 
 
-(defn common-child-length [fist-string second-string])
+(defn common-child-length [first-string second-string]
+  )
+
+
