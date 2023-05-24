@@ -7,4 +7,8 @@
   "Функция возвращает true, если из букв в строке letters
   можно составить слово word."
   [letters word]
-  nil)
+  (let [ls (group-by identity letters)
+        ws (group-by identity word)]
+    (every? true? (map (fn [[char grp]]
+                         (>= (count (ls char)) (count grp)))
+                       ws))))
