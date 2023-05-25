@@ -90,6 +90,10 @@ numbers-in
   (for [j (range 3)]
     [i j]))
 
+(for [i (range 3)
+      j (range 3)]
+  [i j])
+
 (for [x (range 5)
       :let [y (* x 3)]
       :when (even? y)]
@@ -113,7 +117,7 @@ numbers-in
   (let [nums-index (zipmap nums (range))
         indexs (for [[x i] nums-index
                      [y j] nums-index
-                     :when (< i j)
+                     :when (<= i j)
                      :when (= (+ x y) target)]
                  [i j])]
     (first indexs)))
@@ -136,3 +140,7 @@ numbers-in
 (dorun 5 (repeatedly #(println "hi")))
 ;; (doall 5 (repeatedly #(println "hi"))) ;; TODO не надо так :')
 
+(dotimes [n 5]
+  (println "n is" n))
+
+(run! println (range 5))
