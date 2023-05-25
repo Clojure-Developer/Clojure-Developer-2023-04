@@ -44,3 +44,4 @@
 * [dorun](https://clojuredocs.org/clojure.core/dorun)
 * [doall](https://clojuredocs.org/clojure.core/doall)
 * [dotimes](https://clojuredocs.org/clojure.core/dotimes)
+* [run!](https://clojuredocs.org/clojure.core/run!)
