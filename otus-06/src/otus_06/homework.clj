@@ -1,4 +1,6 @@
-(ns otus-06.homework)
+(ns otus-06.homework
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 ;; Загрузить данные из трех файлов на диске.
 ;; Эти данные сформируют вашу базу данных о продажах.
@@ -94,3 +96,93 @@
 
 
 ;; Файлы находятся в папке otus-06/resources/homework
+
+;; *** Sales Menu ***
+;; ------------------
+;; 1. Display Customer Table
+;; 2. Display Product Table
+;; 3. Display Sales Table
+;; 4. Total Sales for Customer
+;; 5. Total Count for Product
+;; 6. Exit
+
+(defn display-rows
+  [rows]
+  (doseq [{id :id data :data} rows]
+    (printf "%s: %s\n" id data)))
+
+(defn read-simple-table
+  [name]
+  (let [raw-rows (->> (str "homework/" name ".txt")
+                      io/resource
+                      slurp
+                      str/split-lines
+                      (map #(str/split % #"\|")))
+        rows     (mapv
+                   (fn [[id & data]] {:id id :data (vec data)})
+                   raw-rows)
+        index    (zipmap
+                   (map :id rows)
+                   (range 0 (count rows)))]
+    {:rows rows :index index}))
+(defn enrich-sales-rows
+  [sales-rows customers products]
+  (let [{customers-rows :rows customers-index :index} customers
+        {products-rows :rows products-index :index} products]
+    (mapv
+      (fn [{id :id [cid pid & other] :data}]
+        (let [c-idx  (get customers-index cid)
+              p-idx  (get products-index pid)
+              c-row  (get customers-rows c-idx)
+              p-row  (get products-rows p-idx)
+              c-name (get-in c-row [:data 0])
+              p-name (get-in p-row [:data 0])]
+          {:id id :data (into [c-name p-name] other)})) sales-rows)))
+
+(defn read-sales-table []
+  (let [customers  (read-simple-table 'cust)
+        products   (read-simple-table 'prod)
+        sales      (read-simple-table 'sales)
+        sales-rows (enrich-sales-rows (:rows sales) customers products)]
+    (assoc sales :rows sales-rows)))
+
+(defn display-table
+  [reader]
+  (let [{rows :rows} (reader)]
+    (display-rows rows)))
+
+(defn display-customer-table []
+  (display-table (partial read-simple-table 'cust)))
+
+(defn display-product-table []
+  (display-table (partial read-simple-table 'prod)))
+
+(defn display-sales-table []
+  (display-table read-sales-table))
+
+(defn goodbye []
+  (println "Goodbye")
+  (System/exit 0))
+
+(def menu
+  [{:name "Display Customer Table" :action display-customer-table}
+   {:name "Display Product Table" :action display-product-table}
+   {:name "Display Sales Table" :action display-sales-table}
+   {:name "Total Sales for Customer"}
+   {:name "Total Count for Product"}
+   {:name "Exit" :action goodbye}])
+
+(defn print-menu
+  [menu]
+  (let [n            (count menu)
+        numeric-menu (map #(vector %1 %2)
+                          (range 1 (inc n))
+                          menu)]
+    (doseq [[id {name :name}] numeric-menu]
+      (printf "%s. %s\n" id name))))
+
+(defn execute-action
+  [menu-item-id menu]
+  (let [menu-item (nth menu (dec menu-item-id))
+        {action :action} menu-item]
+    (action)))
