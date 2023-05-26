@@ -118,12 +118,12 @@
                       slurp
                       str/split-lines
                       (map #(str/split % #"\|")))
-        rows     (mapv
-                   (fn [[id & data]] {:id id :data (vec data)})
-                   raw-rows)
-        index    (zipmap
-                   (map :id rows)
-                   (range 0 (count rows)))]
+        rows (mapv
+               (fn [[id & data]] {:id id :data (vec data)})
+               raw-rows)
+        index (zipmap
+                (map :id rows)
+                (range))]
     {:rows rows :index index}))
 (defn enrich-sales-rows
   [sales-rows customers products]
@@ -131,18 +131,18 @@
         {products-rows :rows products-index :index} products]
     (mapv
       (fn [{id :id [cid pid & other] :data}]
-        (let [c-idx  (get customers-index cid)
-              p-idx  (get products-index pid)
-              c-row  (get customers-rows c-idx)
-              p-row  (get products-rows p-idx)
+        (let [c-idx (get customers-index cid)
+              p-idx (get products-index pid)
+              c-row (get customers-rows c-idx)
+              p-row (get products-rows p-idx)
               c-name (get-in c-row [:data 0])
               p-name (get-in p-row [:data 0])]
           {:id id :data (into [c-name p-name] other)})) sales-rows)))
 
 (defn read-sales-table []
-  (let [customers  (read-simple-table 'cust)
-        products   (read-simple-table 'prod)
-        sales      (read-simple-table 'sales)
+  (let [customers (read-simple-table 'cust)
+        products (read-simple-table 'prod)
+        sales (read-simple-table 'sales)
         sales-rows (enrich-sales-rows (:rows sales) customers products)]
     (assoc sales :rows sales-rows)))
 
@@ -174,15 +174,33 @@
 
 (defn print-menu
   [menu]
-  (let [n            (count menu)
-        numeric-menu (map #(vector %1 %2)
-                          (range 1 (inc n))
-                          menu)]
-    (doseq [[id {name :name}] numeric-menu]
-      (printf "%s. %s\n" id name))))
+  (doseq [i (range 0 (count menu))]
+    (printf "%s. %s\n" (inc i) (get-in menu [i :name]))))
 
 (defn execute-action
-  [menu-item-id menu]
-  (let [menu-item (nth menu (dec menu-item-id))
+  [menu menu-item-id]
+  (println menu-item-id)
+  (let [menu-item (get menu (dec menu-item-id))
         {action :action} menu-item]
     (action)))
+
+(defn choose-menu-item-prompt
+  [menu]
+  (print-menu menu)
+  (println)
+  (println "Enter an option?")
+  (let [input (read-line)
+        parse-result (try
+                       (let [menu-item-id (Integer/parseInt input)]
+                         [menu-item-id (<= 1 menu-item-id (inc (count menu)))])
+                       (catch Exception _ [input false]))]
+    (when (false? (second parse-result))
+      (println "Wrong menu option:" input "\n"))
+    parse-result))
+
+(defn program-dialog-run
+  [menu]
+  (let [[id] (->> (repeatedly (partial choose-menu-item-prompt menu))
+                  (filter #(true? (second %)))
+                  (first))]
+    (execute-action menu id)))
