@@ -1,4 +1,7 @@
-(ns otus-06.homework)
+(ns otus-06.homework
+  (:require [clojure.string :as str]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]))
 
 ;; Загрузить данные из трех файлов на диске.
 ;; Эти данные сформируют вашу базу данных о продажах.
@@ -92,5 +95,209 @@
 ;; *** Дополнительно можно реализовать возможность добавлять новые записи в исходные файлы
 ;;     Например добавление нового пользователя, добавление новых товаров и новых данных о продажах
 
-
 ;; Файлы находятся в папке otus-06/resources/homework
+
+
+;; ****************************
+;; Функции для работы с БД
+
+(def db {
+         :customer {
+                    :data []
+                    :field [:id :name :addres :phone]
+                    :field-type [int str str str]
+                    :format ["%3d" "%20s" "%-20s" "%10s"]
+                    :file "homework/cust.txt"}
+         :product {:data []
+                   :field [:id :description :cost]
+                   :field-type [int str double]
+                   :format ["%3d" "%20s" "%5.2f"]
+                   :file "homework/prod.txt"}
+         :sales {
+                 :data []
+                 :field [:sales-id :customer-id :product-id :count]
+                 :field-type [int int int int]
+                 :format ["%3d" 
+                          [:customer :id :name "%20s"] 
+                          [:product :id :description "%10s"] 
+                          "%3d"]
+                 :file "homework/sales.txt"}})
+
+(defn get-settings [settings]
+  (fn [db table]
+    (get-in db [table settings])))
+(def get-filename (get-settings :file))
+(def get-fieldname (get-settings :field))
+(def get-data (get-settings :data))
+(def get-format (get-settings :format))
+
+
+(defn read-string* [s]
+  ;; Я не нашел как заставить read-string 
+  ;; корректно прочитать "123-456" "123 jonh" и т.п.
+  ;; Решил обойти таким образом. 
+  ;; Буду благодарен за подсказку
+  (if (re-matches #"\d+\.*\d*"  s)
+    (edn/read-string s)
+    s))
+  
+(defn create-row 
+  "Делает из строки или суквенции мапу для вставки в БД"
+  [line fields]
+  (->> (if (string? line)
+         (->> line
+              (#(str/split % #"\|"))
+              (map read-string*))
+         line)
+      (zipmap fields)))
+
+(defn add-row 
+  "Добавляет строку в БД"
+  [table]
+  (fn [db line]
+    (update-in db 
+               [table :data]
+               conj
+               (create-row line (get-fieldname db table)))))
+  
+
+(defn load-table 
+  "Читает данные из файла и загружает их в таблицу" 
+  [db table]
+  (with-open [f (-> (get-filename db table)
+                    (io/resource)
+                    (io/reader))]
+    (->> f
+         line-seq
+         (reduce (add-row table) db))))
+
+(defn load-db 
+  "Загружает всю БД"
+  [db]
+  (reduce load-table db (keys db)))
+
+(defn find-row 
+  "Ищет строки в которых field = x"
+  [db table fieeld x]
+  (filterv #( = x (fieeld %))(get-data db table)))
+
+(defn format-field 
+  "Форматирует поле таблицы в соответсвии с заданным форматом.
+   Заодно подгружает название из других таблиц, если есть справочник"
+  [db]
+  (fn [fmt s]
+    (if (vector? fmt)
+      (let [[tbl fld name-field fs] fmt
+            name (name-field(first (find-row db tbl fld s)))]
+        (format fs name))
+      (format fmt s))))
+
+(defn show-table 
+  "Отображает всю таблицу.
+   Основная функция для входа из меню"
+  [db table]
+  (let [format-str (get-format db table)]
+    (doseq [row (get-data db table)]
+      (->> (vals row)
+           (map (format-field db) format-str)
+           (str/join " | ")
+           println))
+    (println "Enter to continue..")
+    (read-line)
+    db))
+
+(defn nothing 
+  "Ничего не делает"
+  [& args]
+  (first args))
+
+;;*************************************
+;; Функции для работы с отчетом
+
+(def reports {:cost-by-user
+              {:data [* [[:product-id [:product :cost]] [:count]]]
+               :groupby [:customer-id [:customer :id :name]]
+               :format ["\nEnter user name: " "%s: %5.2f\n"]}
+              :prod-count
+              {:data [nothing [[:count]]]
+               :groupby [:product-id [:product :id :description]]
+               :format ["\nEnter product name: " "%s: %3.0f\n"]}})
+              
+(defn get-rep-exp [rep]
+  (get-in reports [rep :data]))
+(defn get-rep-groupby [rep]
+  (get-in reports [rep :groupby]))
+(defn get-rep-format [rep]
+  (get-in reports [rep :format]))
+
+
+(defn get-val 
+  "Получает данные в соответсвии с exp,
+   опирается при этом на row"
+  [db exp row]
+  (if (= 1 (count exp))
+    ((first exp) row)
+    (let [[f-id [tbl fld]] exp]
+      (get-in (find-row db tbl :id (f-id row)) [0 fld] 0))))
+  
+(defn calc-report 
+  "Вычисляет значение, необходимое для отчета"
+  [db rep name]
+  (let [[f args] (get-rep-exp rep)
+        [f-group [t-search f-id f-search]] (get-rep-groupby rep)]
+       (if-let [id (f-id (first (find-row db t-search f-search name)))]
+         (let [rows (find-row db :sales f-group id)
+               arg-rows (for [r rows]
+                         (map #(get-val db % r) args))]
+           (* (apply + (map #(apply f %) arg-rows)) 1.0))
+         0.0)))
+
+(defn show-report 
+  "Выводит отчет. Основная для входа из менб"
+  [db rep]
+  (let [[promt, fmt] (get-rep-format rep)]
+    (println promt)
+    (let [name (read-line)]
+      (println (format fmt name (calc-report db rep name)))))
+  db)
+
+;;*************************************
+;; Функции для работы с меню
+
+(def menu {"1" {:name-menu "Display Customer Table"
+                :func #(show-table % :customer)}
+           "2" {:name-menu "Display Product Table"
+                :func #(show-table % :product)}
+           "3" {:name-menu "Display Sales Table"
+                :func #(show-table % :sales)}
+           "4" {:name-menu "Total Sales for Customer"
+                :func #(show-report % :cost-by-user)}
+           "5" {:name-menu "Total Count for Product"
+                :func #(show-report % :prod-count)}
+           "6" {:name-menu "Exit"
+                :func nil}})
+
+(defn get-user-choice 
+  "Выводит меню и просит сделать выбор" 
+  []
+  (println "*** MAIN MENU ***")
+  (doseq [[k v] menu]
+    (println k " - " (:name-menu v)))
+  (loop []
+    (println "Enter your choice: ")
+    (let [choice (read-line)]
+      (if (contains? menu choice)
+        choice
+        (recur)))))
+
+
+(defn -main 
+  "Точка входа. Крутит меню и запускает нужные функции"
+  []
+  (loop [db (load-db db)]
+    (when-let [func (get-in menu [(get-user-choice) :func])]
+      (recur (func db)))))
+
+;; (-main)
+
+
