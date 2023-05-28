@@ -7,4 +7,6 @@
   "Функция возвращает true, если из букв в строке letters
   можно составить слово word."
   [letters word]
-  nil)
+  (let [letters-map (frequencies letters)
+        word-map (frequencies word)]
+    (every? #(>= (get letters-map % 0) (get word-map % 0)) (keys word-map))))
