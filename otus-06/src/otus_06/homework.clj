@@ -160,29 +160,27 @@
 (def read-enriched-sales-table (partial load-enriched-sales-table false))
 (def read-enriched-sales-table-with-product-cost (partial load-enriched-sales-table true))
 
-(defn calc-total-sales-for-customer
-  [target-customer-name]
-  (let [{rows :rows} (read-enriched-sales-table-with-product-cost)
-        matched-rows (filter
-                       #(= target-customer-name (get-in % [:data 0]))
-                       rows)
-        total-sales (reduce
-                      (fn [result {[_ _ cost-str quantity-str] :data}]
-                        (let [cost (parse-double cost-str)
-                              quantity (parse-long quantity-str)]
-                          (+ result (* cost quantity))))
-                      0.0
-                      matched-rows)]
-    total-sales))
+(defn calc-aggregation
+  [reader filter map reduce]
+  (let [{rows :rows} (reader)
+        aggregation (->> rows filter map reduce)]
+    aggregation))
 
-(defn display-total-sales-for-customer
-  []
-  (println "Enter customer name: ")
-  (let [customer-name (read-line)]
-    (->> customer-name
-         calc-total-sales-for-customer
-         (format "%s: $%.2f" customer-name)
-         println)))
+(defn calc-total-sales-for-customer
+  [customer-name]
+  (calc-aggregation
+    read-enriched-sales-table-with-product-cost
+    (partial filter #(= customer-name (get-in % [:data 0])))
+    (partial map (fn [{[_ _ cost qnt] :data}] (* (parse-double cost) (parse-long qnt))))
+    (partial reduce +)))
+
+(defn calc-total-count-for-product
+  [target-product-name]
+  (calc-aggregation
+    read-enriched-sales-table
+    (partial filter #(= target-product-name (get-in % [:data 1])))
+    (partial map #(parse-long (get-in % [:data 2])))
+    (partial reduce +)))
 
 (defn display-table
   [reader]
@@ -198,6 +196,23 @@
 (defn display-sales-table []
   (display-table read-enriched-sales-table))
 
+(defn display-total-sales-for-customer
+  []
+  (println "Enter customer name: ")
+  (let [customer-name (read-line)]
+    (->> customer-name
+         calc-total-sales-for-customer
+         (format "%s: $%.2f" customer-name)
+         println)))
+(defn display-total-count-for-product
+  []
+  (println "Enter product name: ")
+  (let [product-name (read-line)]
+    (->> product-name
+         calc-total-count-for-product
+         (format "%s: %d" product-name)
+         println)))
+
 (defn goodbye []
   (println "Goodbye")
   (System/exit 0))
@@ -207,7 +222,7 @@
    {:name "Display Product Table" :action display-product-table}
    {:name "Display Sales Table" :action display-sales-table}
    {:name "Total Sales for Customer" :action display-total-sales-for-customer}
-   {:name "Total Count for Product"}
+   {:name "Total Count for Product" :action display-total-count-for-product}
    {:name "Exit" :action goodbye}])
 
 (defn print-menu
@@ -237,7 +252,7 @@
       (println "Wrong menu option:" input "\n"))
     parse-result))
 
-(defn one-program-dialog-run
+(defn execute-interactive-step
   [menu]
   (let [[id] (->> (repeatedly (partial choose-menu-item-prompt menu))
                   (filter #(true? (second %)))
@@ -246,4 +261,4 @@
     (println)))
 
 (defn -main []
-  (while true (one-program-dialog-run menu)))
+  (while true (execute-interactive-step menu)))
