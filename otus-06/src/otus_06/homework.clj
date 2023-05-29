@@ -1,4 +1,8 @@
-(ns otus-06.homework)
+(ns otus-06.homework
+  (:require 
+    [clojure.string :as str]
+    [clojure.java.io :as io]
+    [clojure.pprint :refer [print-table]]))
 
 ;; Загрузить данные из трех файлов на диске.
 ;; Эти данные сформируют вашу базу данных о продажах.
@@ -92,5 +96,175 @@
 ;; *** Дополнительно можно реализовать возможность добавлять новые записи в исходные файлы
 ;;     Например добавление нового пользователя, добавление новых товаров и новых данных о продажах
 
-
 ;; Файлы находятся в папке otus-06/resources/homework
+
+(defn parse-row
+  "Парсит строку таблицы. Параметры:
+  - `fields`: список полей таблицы. В качестве элемента списка может выступать
+    имя поля (keyword) или пара из имени поля и функции приведения типа.
+  - `line`: строка из файла."
+  [fields line]
+  (into {} (map (fn [field value]
+                  (if (vector? field)
+                    (let [[field coerce-fn] field]
+                      [field (coerce-fn value)])
+                    [field value]))
+                fields
+                (str/split line #"[|]"))))
+
+(defn load-db
+  "Читает файл базы данных, возвращает мапу."
+  [resource fields]
+  (->> resource
+       io/resource
+       slurp
+       str/split-lines
+       (map (fn [line]
+              (let [row (parse-row fields line)]
+                (vector (:id row) row))))
+       (into {})))
+
+(defn parse-int
+  "Парсит целое число из строки. В случае неудачи возвращает nil."
+  [s]
+  (try
+    (Integer. s)
+    (catch java.lang.NumberFormatException _
+      nil)))
+
+(defn parse-decimal
+  "Парсит десятичную дробь из строки. В случае неудачи возвращает nil."
+  [s]
+  (try
+    (BigDecimal. s)
+    (catch java.lang.NumberFormatException _
+      nil)))
+
+;; Описания колонок таблиц.
+(def cust-columns [:id :name :address :phone])
+(def prod-columns [:id :name [:price parse-decimal]])
+(def sales-columns [:id :cust-id :prod-id [:quantity parse-int]])
+
+;; Данные таблиц.
+(def cust (load-db "homework/cust.txt" cust-columns))
+(def prod (load-db "homework/prod.txt" prod-columns))
+(def sales (load-db "homework/sales.txt" sales-columns))
+
+(defn get-column-names
+  "Возвращает названия колонок."
+  [columns]
+  (mapv #(if (vector? %) (first %) %)
+        columns))
+
+(defn get-table-values
+  "Возвращает данные таблиц в виде списка мап."
+  [data]
+  (->> data (map val) (sort-by :id)))
+
+(defn cust-sales
+  "Возвращает общую сумму трат указанного клиента."
+  [cust-name]
+  (when-let [[_ cust-row] (first (filter (fn [[_ row]] (= cust-name (:name row))) cust))]
+    (->> sales
+         (filter (fn [[_ row]]
+                   (= (:cust-id row) (:id cust-row))))
+         (map (fn [[_ sales-row]]
+                (* (:quantity sales-row) (-> (:prod-id sales-row) prod :price))))
+         (reduce +))))
+
+(defn prod-count
+  "Возвращает количество проданных единиц указанного продукта."
+  [prod-name]
+  (when-let [[_ prod-row] (first (filter (fn [[_ row]] (= prod-name (:name row))) prod))]
+    (->> sales
+         (filter (fn [[_ row]]
+                   (= (:prod-id row) (:id prod-row))))
+         (map (comp :quantity second))
+         (reduce +))))
+
+(comment
+  (cust-sales "John Smith")
+  (prod-count "shoes"))
+
+(defn show-table
+  "Показывает содержимое указанной таблицы. В качестве заголовка использует
+  названия колонок данной таблицы."
+  [columns table]
+  (print-table (get-column-names columns) (get-table-values table)))
+
+(defn show-cust
+  []
+  (show-table cust-columns cust))
+
+(defn show-prod
+  []
+  (show-table prod-columns prod))
+
+(defn show-sales
+  []
+  (show-table sales-columns sales))
+
+(defn show-cust-sales
+  "Спрашивает имя покупателя и печатает сумму его покупок."
+  []
+  (print "Enter customer name: ")
+  (flush)
+  (when-let [customer (read-line)]
+    (println
+      (if-let [value (cust-sales customer)]
+        (str customer ": " (.toString value))
+        "Unknown customer."))))
+
+(defn show-prod-count
+  "Спрашивает название продукта и печатает проданное количество."
+  []
+  (print "Enter product name: ")
+  (flush)
+  (when-let [product (read-line)]
+    (println
+      (if-let [value (prod-count product)]
+        (str product ": " value)
+        "Unknown product."))))
+
+
+(def menu
+  {:title "-=[ Sales Menu ]=-"
+   :options [{:title "Display Customer Table"   :function show-cust}
+             {:title "Display Product Table"    :function show-prod}
+             {:title "Display Sales Table"      :function show-sales}
+             {:title "Total Sales for Customer" :function show-cust-sales}
+             {:title "Total Count for Product"  :function show-prod-count}
+             {:title "Exit"                     :function nil}]
+   :prompt "Enter option: "})
+
+(defn repeat-char
+  [n c]
+  (str/join "" (repeat n c)))
+
+(defn show-menu
+  "Показывает меню, переданное в параметре."
+  [menu]
+  (->> [[(:title menu)
+         (repeat-char (count (:title menu)) "-")]
+        (map-indexed (fn [i {title :title}]
+               (format "[%d] %s" (inc i) title))
+             (:options menu))
+        ["\nEnter option: "]]
+       (apply concat)
+       (str/join "\n")
+       print)
+  (flush))
+
+(defn menu-loop []
+  (loop []
+    (show-menu menu)
+    (let [option (parse-int (read-line))]
+      (if (and option (<= 1 option (count (:options menu))))
+        (let [function (-> menu :options (nth (dec option)) :function)]
+          (if function (do (function) (println) (recur))
+            (println "Program finished.")))
+        (do (println "Unknown option.\n") (recur))))))
+
+(defn -main
+  [] (menu-loop))
+
