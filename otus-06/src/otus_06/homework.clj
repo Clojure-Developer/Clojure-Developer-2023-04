@@ -235,7 +235,7 @@
              {:title "Total Sales for Customer" :function show-cust-sales}
              {:title "Total Count for Product"  :function show-prod-count}
              {:title "Exit"                     :function nil}]
-   :prompt "Enter option: "})
+   :prompt "\nEnter option: "})
 
 (defn repeat-char
   [n c]
@@ -249,7 +249,7 @@
         (map-indexed (fn [i {title :title}]
                (format "[%d] %s" (inc i) title))
              (:options menu))
-        ["\nEnter option: "]]
+        [(:prompt menu)]]
        (apply concat)
        (str/join "\n")
        print)
