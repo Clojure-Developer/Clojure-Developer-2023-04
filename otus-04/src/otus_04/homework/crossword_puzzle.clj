@@ -52,7 +52,7 @@
         words (str/split (last lines) #";")]
     {:board board :words words}))
 
-(defn str-board
+(defn str->board
   "Строковое представление поля кроссворда"
   [board]
   (str/join "\n" (map (partial str/join) board)))
@@ -62,15 +62,14 @@
 (defn find-free-cell
   "Ищем первую свободную ячейку (то есть ту, которая символизиурется прочерком '-')"
   [board]
-  (let [n (count board)]
-    (loop [row 0]
-      (if (>= row n)
-        {:row -1 :col -1 :ok? false}
-        (let [board-row (get board row)
-              col (search board-row \-)]
-          (if (>= col 0)
-            {:row row :col col :ok? true}
-            (recur (inc row))))))))
+  (->> board
+       (map (fn [row board-row]
+              (let [col (search board-row \-)
+                    ok? (>= col 0)]
+                {:row row :col col :ok? ok?}))
+         (iterate inc 0))
+       (filter #(:ok? %))
+       first))
 
 (defn valid-position?
   "Валидна ли позиция ячейки (row col) на поле?"
@@ -260,4 +259,4 @@
   (let [{board :board words :words} (parse-input input)
         solve-result                (do-solve board words)
         {ok? :ok? board :board}      solve-result]
-    (if ok? (str-board board) "")))
+    (if ok? (str->board board) "")))
