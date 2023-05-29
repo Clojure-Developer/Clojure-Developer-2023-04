@@ -3,12 +3,14 @@
 
 (def alphabet "abcdefghijklmnopqrstuvwxyz")
 
+(def pattern (re-pattern (str "[^" alphabet "]")))
+
 (defn is-pangram
   "Проверяет, является ли строка панграммой для заданного выше алфавита."
   [test-string]
   (-> test-string
       s/lower-case
-      (s/replace (re-pattern (str "[^" alphabet "]")) "")
+      (s/replace pattern "")
       set
       count
       (= (count alphabet))))
