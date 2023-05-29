@@ -19,7 +19,6 @@
   можно составить слово word."
   [letters word]
   (let [stat-letters (count-letters letters)
-        result-stat  (subtract-letters stat-letters word)
-        with-neg-values (filter (fn [[_ v]] (neg? v)) result-stat)]
-    (zero? (count with-neg-values))))
+        result-stat  (subtract-letters stat-letters word)]
+    (every? (fn [[_ v]] (>= v 0)) result-stat)))
 
