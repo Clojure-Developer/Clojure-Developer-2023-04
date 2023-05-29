@@ -14,36 +14,34 @@
   [mask]
   (re-pattern (str/replace (apply str mask) "-" "[A-Z]")))
 
-(defn insert-into
-  "Вставляем в вектор символов символы chars начиная с позиции i,
-  заменяя каждый символ вектора на очередной символ из chars"
-  [input i chars]
-  (vec (concat (take i input) chars (drop (+ i (count chars)) input))))
+;; Хитрый векторный патчер от https://github.com/astynax
+;; Комментарий-пояснение от автора
+;; А всего-то и нужно уметь применить [10 10] к [1 2 3 4 5] со сдвигом.
+;; Для этого "патч" нужно превратить в (nil 10 10 nil nil), то есть подогнать под длину.
+;; Всё, дальше patch-with работает и для вертикалей, и для горизонталей, поскольку векторы векторов —
+;; векторы сами по себе. И будет этот хелпер работать хоть в трёхмерном пространстве, хоть в семимерном :)
+(defn patch-with
+  [v f patch offset]
+  (let [row (concat (repeat offset nil)
+                    patch
+                    (repeat (- (count v) (count patch) offset) nil))]
+    (mapv (fn [x p] (if (nil? p) x (f x p)))
+          v row)))
+
+;; (patch-with [1 2 3 4 5] + [10 10] 1)
+;; => [1 12 13 4 5]
 
 (defn add-word-horizontally
   "Добавляем в поле горизонтально слово word, начиная с позиции row col
   Поле - вектор векторов"
   [board row col word]
-  (let [board-row (get board row)
-        new-board-row (insert-into board-row col word)]
-    (assoc board row new-board-row)))
-
-(defn update-cell
-  [board row col ch]
-  (let [board-row (get board row)
-        new-board-row (assoc board-row col ch)]
-    (assoc board row new-board-row)))
+  (update board row patch-with (fn [_ p] p) word col))
 
 (defn add-word-vertically
   "Добавляем в поле вертикально слово word, начиная с позиции row col
   Поле - вектор векторов"
   [board row col word]
-  (->> word
-       (map list (iterate inc row))
-       (reduce
-         (fn [result-board [current-row ch]]
-           (update-cell result-board current-row col ch))
-         board)))
+  (patch-with board (fn [board-row p] (assoc board-row col p)) word row))
 
 (defn parse-input
   "Парсим входные строку программы и возвращаем поле и список слов в соот-щих ключах мапы"
