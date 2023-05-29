@@ -181,6 +181,11 @@
   [db table fieeld x]
   (filterv #( = x (fieeld %))(get-data db table)))
 
+(defn find-first-row 
+  "Ищет первую строку, попадающую под условия"[db table fieeld x]
+  (first (find-row db table fieeld x)))
+  
+
 (defn format-field 
   "Форматирует поле таблицы в соответсвии с заданным форматом.
    Заодно подгружает название из других таблиц, если есть справочник"
@@ -188,7 +193,7 @@
   (fn [fmt s]
     (if (vector? fmt)
       (let [[tbl fld name-field fs] fmt
-            name (name-field(first (find-row db tbl fld s)))]
+            name (name-field(find-first-row db tbl fld s))]
         (format fs name))
       (format fmt s))))
 
@@ -238,14 +243,14 @@
   (if (= 1 (count exp))
     ((first exp) row)
     (let [[f-id [tbl fld]] exp]
-      (get-in (find-row db tbl :id (f-id row)) [0 fld] 0))))
+      (fld (find-first-row db tbl :id (f-id row))))))
   
 (defn calc-report 
   "Вычисляет значение, необходимое для отчета"
   [db rep name]
   (let [[f args] (get-rep-exp rep)
         [f-group [t-search f-id f-search]] (get-rep-groupby rep)]
-       (if-let [id (f-id (first (find-row db t-search f-search name)))]
+       (if-let [id (f-id (find-first-row db t-search f-search name))]
          (let [rows (find-row db :sales f-group id)
                arg-rows (for [r rows]
                          (map #(get-val db % r) args))]
