@@ -6,6 +6,9 @@
 ;; Подсказка: используйте "Siamese method"
 ;; https://en.wikipedia.org/wiki/Siamese_method
 
+(defn build-square [n]
+  (vec (repeat n (vec (repeat n 0)))))
+
 (defn set-value [square [x y] value]
   (assoc-in square [y x] value))
 
@@ -21,27 +24,21 @@
       [(- n 2) 0]
       (let [x (mod x n)
             y (if (< y 0)
-                 (dec n)
-                 y)]
+                (dec n)
+                y)]
         (if (not= (get-value square [x y]) 0)
           [(- x 2) (inc y)]
           [x y])))))
 
 (defn fill
-  ([square] (let [n        (count square)
-                  position [(dec n) (int (/ n 2))]
-                  square   (set-value square position 1)]
-              (fill square position 2)))
-  ([square prev-position prev-value]
-   (letfn [(fill-inner [square position value]
-             (let [n (count square)
-                   max-value (* n n)
-                   position (next-position square position)]
-               (if (= value (inc max-value))
-                 square
-                 (recur (set-value square position value) position (inc value)))))]
-     (fill-inner square prev-position prev-value))))
-
+  ([square] (let [n (count square)
+                  max-value (* n n)]
+              (loop [position [(dec n) (int (/ n 2))]
+                     square (set-value square position 1)
+                     value 1]
+                (if (> value max-value)
+                  square
+                  (recur (next-position square position) (set-value square position value) (inc value)))))))
 
 (defn magic-square
   "Функция возвращает вектор векторов целых чисел,
@@ -52,5 +49,5 @@
   горизонталей и диагоналей длиной в n должны быть одинаковы."
   [n]
   {:pre [(odd? n)]}
-  (let [square (vec (repeat n (vec (repeat n 0))))]
+  (let [square (build-square n)]
     (fill square)))
