@@ -28,21 +28,21 @@
         new-board-row (insert-into board-row col word)]
     (assoc board row new-board-row)))
 
+(defn update-cell
+  [board row col ch]
+  (let [board-row (get board row)
+        new-board-row (assoc board-row col ch)]
+    (assoc board row new-board-row)))
 (defn add-word-vertically
   "Добавляем в поле вертикально слово word, начиная с позиции row col
   Поле - вектор векторов"
   [board row col word]
-  (loop [current-board board
-         current-row row
-         [ch & chars] word]
-    (if (nil? ch)
-      current-board
-      (let [board-row (get board current-row)
-            new-board-row (assoc board-row col ch)]
-        (recur
-          (assoc current-board current-row new-board-row)
-          (inc current-row)
-          chars)))))
+  (->> word
+       (map list (iterate inc row))
+       (reduce
+         (fn [result-board [current-row ch]]
+           (update-cell result-board current-row col ch))
+         board)))
 
 (defn parse-input
   "Парсим входные строку программы и возвращаем поле и список слов в соот-щих ключах мапы"
