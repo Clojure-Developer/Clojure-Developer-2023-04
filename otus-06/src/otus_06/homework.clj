@@ -98,6 +98,16 @@
 ;; Файлы находятся в папке otus-06/resources/homework
 
 
+(defn get-user-answer
+  "Принимает запрос к пользователю и функцию pf, которой проверяется
+   ответ пользователя. Если возвращается nil, повторяет запрос"
+  [promt pf]
+  (loop []
+    (println promt)
+    (if-let [ans (pf (read-line))]
+      ans
+      (recur))))
+
 ;; ****************************
 ;; Функции для работы с БД
 
@@ -114,7 +124,7 @@
                    :field-type [int str double]
                    :format ["%3d" "%20s" "%5.2f"]
                    :file "homework/prod.txt"
-                   :save-promt [["Description: "] ["Cost:"] ["Phone: "]]}
+                   :save-promt [["Description: "] ["Cost:"]]}
          :sales {
                  :data []
                  :field [:id :customer-id :product-id :count]
@@ -296,14 +306,10 @@
   [acc exp]
   (let [[db _] acc
         [promt [table field]] exp]
-    (loop []
-      (println promt)
-      (let [name (read-line)
-            id (:id (find-first-row db table field name))]
-        (cond
-          (nil? table) name
-          (some? id) id
-          :else (recur))))))
+    (if (nil? table)
+      (get-user-answer promt nothing)
+      (get-user-answer promt
+                       #(:id (find-first-row db table field %))))))
 
 (defn add-cell 
   "Добавляет новую ячейку в строку"
@@ -331,6 +337,9 @@
 ;;*************************************
 ;; Функции для работы с меню
 
+(defn exit [_]
+  (System/exit 0))
+
 (def menu (into 
            (sorted-map)
            {"1" {:name-menu "Display Customer Table"
@@ -345,34 +354,27 @@
                  :func #(show-report % :prod-count)}
             "6" {:name-menu "New Customer"
                  :func #(new-row % :customer)}
-            "7" {:name-menu "New Customer"
+            "7" {:name-menu "New Product"
                  :func #(new-row % :product)}
-            "8" {:name-menu "New Customer"
+            "8" {:name-menu "New Sale"
                  :func #(new-row % :sales)}
             "9" {:name-menu "Exit"
-                 :func nil}}))
+                 :func exit}}))
 
-(defn get-user-choice 
+(defn check-menu [answer]
+  (get-in menu [answer :func]))
+
+(defn show-menu 
   "Выводит меню и просит сделать выбор" 
   []
   (println "*** MAIN MENU ***")
   (doseq [[k v] menu]
     (println k " - " (:name-menu v)))
-  (loop []
-    (println "Enter your choice: ")
-    (let [choice (read-line)]
-      (if (contains? menu choice)
-        choice
-        (recur)))))
-
-
+  (get-user-answer "Enter your choice: " check-menu))
+  
 (defn -main 
   "Точка входа. Крутит меню и запускает нужные функции"
   []
-  (loop [db (load-db db)]
-    (when-let [func (get-in menu [(get-user-choice) :func])]
-      (recur (func db)))))
+  (reduce #(%2 %1) (load-db db) (repeatedly show-menu)))
 
 ;; (-main)
-
-
