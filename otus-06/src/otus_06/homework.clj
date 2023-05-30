@@ -107,20 +107,25 @@
                     :field [:id :name :addres :phone]
                     :field-type [int str str str]
                     :format ["%3d" "%20s" "%-20s" "%10s"]
-                    :file "homework/cust.txt"}
+                    :file "homework/cust.txt"
+                    :save-promt [["Name: "] ["Addres: "] ["Phone: "]]}
          :product {:data []
                    :field [:id :description :cost]
                    :field-type [int str double]
                    :format ["%3d" "%20s" "%5.2f"]
-                   :file "homework/prod.txt"}
+                   :file "homework/prod.txt"
+                   :save-promt [["Description: "] ["Cost:"] ["Phone: "]]}
          :sales {
                  :data []
-                 :field [:sales-id :customer-id :product-id :count]
+                 :field [:id :customer-id :product-id :count]
                  :field-type [int int int int]
                  :format ["%3d" 
                           [:customer :id :name "%20s"] 
                           [:product :id :description "%10s"] 
                           "%3d"]
+                 :save-promt [["Customer: " [:customer :name]] 
+                              ["Product: " [:product :description]] 
+                              ["Count: "]]
                  :file "homework/sales.txt"}})
 
 (defn get-settings [settings]
@@ -130,6 +135,7 @@
 (def get-fieldname (get-settings :field))
 (def get-data (get-settings :data))
 (def get-format (get-settings :format))
+(def get-save-promt (get-settings :save-promt))
 
 
 (defn read-string* [s]
@@ -185,7 +191,6 @@
   "Ищет первую строку, попадающую под условия"[db table fieeld x]
   (first (find-row db table fieeld x)))
   
-
 (defn format-field 
   "Форматирует поле таблицы в соответсвии с заданным форматом.
    Заодно подгружает название из других таблиц, если есть справочник"
@@ -265,22 +270,87 @@
     (let [name (read-line)]
       (println (format fmt name (calc-report db rep name)))))
   db)
+;;*************************************
+;; Функции для добавления записей
 
+(defn create-string 
+  "Принимает вектор значений и возвращает строку, как в файле"
+  [row]
+  (->> (vals row)
+       (map str)
+       (str/join "|")))
+
+(defn save-table 
+  "Сохраняет таблицу в файл"
+  [db table]
+  (spit 
+   (io/resource (get-filename db table))
+   (->> (get-data db table)
+        (map create-string)
+        (str/join "\n")))
+  db)
+
+(defn promt-cell 
+  "Запрашивает у пользователя ввод очередного поля.
+   Проверяет его на допустимость и возвращает нужное значение"
+  [acc exp]
+  (let [[db _] acc
+        [promt [table field]] exp]
+    (loop []
+      (println promt)
+      (let [name (read-line)
+            id (:id (find-first-row db table field name))]
+        (cond
+          (nil? table) name
+          (some? id) id
+          :else (recur))))))
+
+(defn add-cell 
+  "Добавляет новую ячейку в строку"
+  [acc exp]
+  (update-in acc [1] conj (promt-cell acc exp)))
+   
+
+(defn promt-row 
+  "Запрашивает все данные для новой записи"
+  [db table]
+  (let [max-id (apply max (map :id (get-data db table)))
+        row (reduce add-cell [db [(str (inc max-id))]] (get-save-promt db table))]
+    (-> (row 1)
+        (#(str/join "|" %)))))
+
+
+(defn new-row 
+  "Реализует пункт меню с добавлением записей"
+  [db table]
+  (->> (promt-row db table)
+       ((add-row table) db)
+       (#(save-table % table)))) 
+
+  
 ;;*************************************
 ;; Функции для работы с меню
 
-(def menu {"1" {:name-menu "Display Customer Table"
-                :func #(show-table % :customer)}
-           "2" {:name-menu "Display Product Table"
-                :func #(show-table % :product)}
-           "3" {:name-menu "Display Sales Table"
-                :func #(show-table % :sales)}
-           "4" {:name-menu "Total Sales for Customer"
-                :func #(show-report % :cost-by-user)}
-           "5" {:name-menu "Total Count for Product"
-                :func #(show-report % :prod-count)}
-           "6" {:name-menu "Exit"
-                :func nil}})
+(def menu (into 
+           (sorted-map)
+           {"1" {:name-menu "Display Customer Table"
+                 :func #(show-table % :customer)}
+            "2" {:name-menu "Display Product Table"
+                 :func #(show-table % :product)}
+            "3" {:name-menu "Display Sales Table"
+                 :func #(show-table % :sales)}
+            "4" {:name-menu "Total Sales for Customer"
+                 :func #(show-report % :cost-by-user)}
+            "5" {:name-menu "Total Count for Product"
+                 :func #(show-report % :prod-count)}
+            "6" {:name-menu "New Customer"
+                 :func #(new-row % :customer)}
+            "7" {:name-menu "New Customer"
+                 :func #(new-row % :product)}
+            "8" {:name-menu "New Customer"
+                 :func #(new-row % :sales)}
+            "9" {:name-menu "Exit"
+                 :func nil}}))
 
 (defn get-user-choice 
   "Выводит меню и просит сделать выбор" 
