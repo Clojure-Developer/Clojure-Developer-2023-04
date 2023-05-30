@@ -1,0 +1,3 @@
+[{:first-name "John", :last-name "McCarthy", :language "Lisp"}
+ {:first-name "Guido", :last-name "Van Rossum", :language "Python"}
+ {:first-name "Rich", :last-name "Hickey", :language "Clojure"}]

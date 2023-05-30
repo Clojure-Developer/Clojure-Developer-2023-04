@@ -1,0 +1,3 @@
+1|John Smith|123 Here Street|456-4567
+2|Sue Jones|43 Rose Court Street|345-7867
+3|Fan Yuhong|165 Happy Lane|345-4533
