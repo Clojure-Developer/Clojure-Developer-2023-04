@@ -21,6 +21,10 @@
 
              :dev     {:source-paths   ["dev/src"]
                        :resource-paths ["dev/resources"]
-                       :dependencies   [[djblue/portal "0.30.0"]]}}
+                       :dependencies   [[djblue/portal "0.40.0"]
+                                        [vvvvalvalval/scope-capture "0.3.3"]
+                                        [vlaaad/reveal "1.3.280"]]
+                       :repl-options   {:nrepl-middleware [vlaaad.reveal.nrepl/middleware]}}}
+
 
   :aliases {"help" ["run" "help"]})
