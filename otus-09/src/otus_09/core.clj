@@ -59,9 +59,9 @@
           :else n)))
 
 (defn area- [object]
-  (match [object]
-         [{:shape :rect :width w :height h}] (* w h)
-         [{:shape :circle :radius r}] (* Math/PI r r)
+  (match object
+         {:shape :rect :width w :height h} (* w h)
+         {:shape :circle :radius r} (* Math/PI r r)
          :else (throw (ex-info "Unknown shape" {:shape object}))))
 
 (area- r)
