@@ -153,7 +153,7 @@
   ;; корректно прочитать "123-456" "123 jonh" и т.п.
   ;; Решил обойти таким образом. 
   ;; Буду благодарен за подсказку
-  (if (re-matches #"\d+\.*\d*"  s)
+  (if (re-matches #"\d+\.?\d*"  s)
     (edn/read-string s)
     s))
   
@@ -167,14 +167,13 @@
          line)
       (zipmap fields)))
 
-(defn add-row 
+(defn add-row
   "Добавляет строку в БД"
-  [table]
-  (fn [db line]
-    (update-in db 
-               [table :data]
-               conj
-               (create-row line (get-fieldname db table)))))
+  [table db line]
+  (update-in db
+             [table :data]
+             conj
+             (create-row line (get-fieldname db table))))
   
 
 (defn load-table 
@@ -185,7 +184,7 @@
                     (io/reader))]
     (->> f
          line-seq
-         (reduce (add-row table) db))))
+         (reduce (partial add-row table) db))))
 
 (defn load-db 
   "Загружает всю БД"
@@ -194,12 +193,12 @@
 
 (defn find-row 
   "Ищет строки в которых field = x"
-  [db table fieeld x]
-  (filterv #( = x (fieeld %))(get-data db table)))
+  [db table field x]
+  (filterv #( = x (field %))(get-data db table)))
 
 (defn find-first-row 
-  "Ищет первую строку, попадающую под условия"[db table fieeld x]
-  (first (find-row db table fieeld x)))
+  "Ищет первую строку, попадающую под условия"[db table field x]
+  (first (find-row db table field x)))
   
 (defn format-field 
   "Форматирует поле таблицы в соответсвии с заданным форматом.
@@ -218,7 +217,7 @@
   [db table]
   (let [format-str (get-format db table)]
     (doseq [row (get-data db table)]
-      (->> (vals row)
+      (->> (map row (get-fieldname db table))
            (map (format-field db) format-str)
            (str/join " | ")
            println))
@@ -260,15 +259,15 @@
     (let [[f-id [tbl fld]] exp]
       (fld (find-first-row db tbl :id (f-id row))))))
   
-(defn calc-report 
+(defn calc-report
   "Вычисляет значение, необходимое для отчета"
   [db rep name]
   (let [[f args] (get-rep-exp rep)
         [f-group [t-search f-id f-search]] (get-rep-groupby rep)]
        (if-let [id (f-id (find-first-row db t-search f-search name))]
          (let [rows (find-row db :sales f-group id)
-               arg-rows (for [r rows]
-                         (map #(get-val db % r) args))]
+               arg-func (map #(partial get-val db %) args)
+               arg-rows (map (apply juxt arg-func) rows)]
            (* (apply + (map #(apply f %) arg-rows)) 1.0))
          0.0)))
 
@@ -285,8 +284,8 @@
 
 (defn create-string 
   "Принимает вектор значений и возвращает строку, как в файле"
-  [row]
-  (->> (vals row)
+  [fields row]
+  (->> (map row fields)
        (map str)
        (str/join "|")))
 
@@ -295,9 +294,10 @@
   [db table]
   (spit 
    (io/resource (get-filename db table))
-   (->> (get-data db table)
-        (map create-string)
-        (str/join "\n")))
+   (let [fields (get-fieldname db table)]
+     (->> (get-data db table)
+          (map (partial create-string fields))
+          (str/join "\n"))))
   db)
 
 (defn promt-cell 
@@ -330,7 +330,7 @@
   "Реализует пункт меню с добавлением записей"
   [db table]
   (->> (promt-row db table)
-       ((add-row table) db)
+       (add-row table db)
        (#(save-table % table)))) 
 
   
