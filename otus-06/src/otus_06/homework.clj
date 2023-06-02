@@ -266,8 +266,8 @@
         [f-group [t-search f-id f-search]] (get-rep-groupby rep)]
        (if-let [id (f-id (find-first-row db t-search f-search name))]
          (let [rows (find-row db :sales f-group id)
-               arg-rows (for [r rows]
-                         (map #(get-val db % r) args))]
+               arg-func (map #(partial get-val db %) args)
+               arg-rows (map (apply juxt arg-func) rows)]
            (* (apply + (map #(apply f %) arg-rows)) 1.0))
          0.0)))
 
