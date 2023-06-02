@@ -102,12 +102,12 @@
 (def sales-file "resources/homework/sales.txt")
 
 (def table-schema
-  {:cust {:file cust-file :id 0 :name 1 :address 2 :phone 3}
-   :prod {:file prod-file :id 0 :name 1 :cost 2}
-   :sales {:file sales-file :id 0 :cust-id 1 :prod-id 2 :count 3}})
+  {:cust {:file cust-file :title "customer" :id 0 :name 1 :address 2 :phone 3}
+   :prod {:file prod-file :title "product" :id 0 :name 1 :cost 2}
+   :sales {:file sales-file :title "sales" :id 0 :cust-id 1 :prod-id 2 :count 3}})
 
 (defn map-line [line schema]
-  (into {} (for [[key value] (dissoc schema :file)]
+  (into {} (for [[key value] (dissoc schema :file :title)]
              [key (nth line value)])))
 
 (defn clear-terminal []
@@ -116,12 +116,6 @@
 (defn parse-line [line]
   (str/split line #"\|"))
 
-(defn for-each-line [file cb]
-  (with-open [rdr (io/reader file)]
-    (doseq [[index line] (map-indexed vector (line-seq rdr))]
-      (let [line (parse-line line)]
-          (cb line index)))))
-
 (defn format-row [row index]
   (->> row
       (mapv #(format "\"%s\"" %))
@@ -129,21 +123,26 @@
       (format "%d: [%s]" (inc index))))
 
 (defn print-table [file]
-  (for-each-line file (fn [line index]
-                        (-> (format-row line index)
-                            (println)))))
+  (with-open [rdr (io/reader file)]
+   (->> (line-seq rdr)
+      (map parse-line)
+      (map-indexed vector)
+      (mapv (fn [[index line]]
+              (format-row line index)))
+      (str/join "\n")
+      (println))))
 
 (defn load-table [table]
-  (let [{:keys [file] :as schema} (table table-schema)
-        all-ids (atom [])
-        by-id (atom {})]
-    (for-each-line file (fn [line _] ;; do we have a way to pass callback with only one argument?
-                          (let [[id] line
-                                data (map-line line schema)]
-                            (swap! all-ids conj id)
-                            (swap! by-id assoc id data))))
-    {:all-ids @all-ids
-     :by-id @by-id}))
+  (let [{:keys [file] :as schema} (table table-schema)]
+    (with-open [rdr (io/reader file)]
+      (->> (line-seq rdr)
+        (map parse-line)
+        (mapv #(map-line % schema))
+        (reduce (fn [acc value]
+                  (-> acc
+                      (update :by-id assoc (:id value) value)
+                      (update :all-ids conj (:id value))))
+                {:by-id {} :all-ids []})))))
 
 (defn load-tables []
   {:cust (load-table :cust)
@@ -194,25 +193,26 @@
                   {prod-name :name} (find-by-id db :prod prod-id)]]
       (println (format-row [cust-name prod-name count] index)))))
 
+(defn handle-entity-metric [entity-type metric-calc-fn]
+  (let [db (load-tables)
+        title (str/capitalize (get-in table-schema [entity-type :title]))]
+    (println (format "Enter %s name:" title))
+    (let [entity-name (read-line)
+          {entity-id :id entity :data} (find-by-name db entity-type entity-name)]
+      (if entity
+        (let [result (metric-calc-fn db entity-id)]
+          (println (format "Total for %s %s: %s"
+                           title entity-name result)))
+        (println (format "%s %s not found" title entity-name))))))
+
 (defn on-display-total-sales-for-customer []
- (let [db (load-tables)]
-  (println "Enter customer name:")
-  (let [customer-name (read-line)
-        {customer-id :id customer :data} (find-by-name db :cust customer-name)]
-    (if customer
-      (let [total (calc-total-sales-for-customer db customer-id)]
-        (println (format "Total Sales for Customer %s: $%.2f" customer-name total)))
-     (println (format "Customer %s not found" customer-name))))))
+  (handle-entity-metric :cust (comp #(format "%.2f" %) calc-total-sales-for-customer)))
 
 (defn on-display-total-count-for-product []
-  (let [db (load-tables)]
-    (println "Enter product name:")
-    (let [product-name (read-line)
-          {product-id :id product :data} (find-by-name db :prod product-name)]
-      (if product
-        (let [count (calc-total-count-for-product db product-id)]
-          (println (format "Total Count of Product %s: %d" product-name count)))
-        (println (format "Product %s not found" product-name))))))
+  (handle-entity-metric :prod calc-total-count-for-product))
+
+(defn on-no-such-action []
+  (println "Not valid option. Please enter a valid one."))
 
 (defn render-menu [menu]
  (clear-terminal)
@@ -226,7 +226,7 @@
   (let [input (read-line)]
     (try
       (Integer/parseInt input)
-      (catch Exception e
+      (catch Exception _
         (println "Invalid input")
         -1))))
 
@@ -244,7 +244,7 @@
     (while @running?
       (let [choice (get-user-input)
             item (get menu (dec choice))
-            action (get item :action (fn []))]
+            action (get item :action on-no-such-action)]
         (action)))))
 
 (defn -main
