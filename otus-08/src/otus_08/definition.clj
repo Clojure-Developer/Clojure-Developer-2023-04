@@ -1,4 +1,4 @@
-(ns otus-8.definition)
+(ns otus-08.definition)
 
 (defn- func
   []

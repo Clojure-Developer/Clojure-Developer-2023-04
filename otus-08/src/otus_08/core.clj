@@ -1,4 +1,4 @@
-(ns otus-8.core
+(ns otus-08.core
   (:gen-class))
 
 (defn now
@@ -28,14 +28,15 @@
 
 ;; К чему нельзя прикреплять метаданные?
 
-(with-meta :keyword
-  {:created-on (now)})
+(comment
+  (with-meta :keyword
+    {:created-on (now)})
 
-(with-meta "string"
-  {:created-on (now)})
+  (with-meta "string"
+    {:created-on (now)})
 
-(with-meta (java.util.Base64/getDecoder)
-  {:created-on (now)})
+  (with-meta (java.util.Base64/getDecoder)
+    {:created-on (now)}))
 
 ;; Метаданные персистентны
 

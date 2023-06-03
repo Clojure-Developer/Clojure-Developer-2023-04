@@ -1,6 +1,6 @@
-(ns otus-8.util-test
+(ns otus-08.util-test
   (:require [clojure.test :refer :all]
-            [otus-8.util :as sut]
+            [otus-08.util :as sut]
             [matcher-combinators.test]
             [matcher-combinators.matchers :as m]))
 

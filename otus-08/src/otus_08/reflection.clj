@@ -1,4 +1,4 @@
-(ns otus-8.reflection)
+(ns otus-08.reflection)
 
 (set! *warn-on-reflection* true)
 

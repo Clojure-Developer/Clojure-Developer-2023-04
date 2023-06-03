@@ -1,4 +1,4 @@
-(ns otus-8.util)
+(ns otus-08.util)
 
 (defn cel->fahr
   [cel]
