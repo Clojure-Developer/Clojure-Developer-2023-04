@@ -161,30 +161,50 @@
   [data]
   (->> data (map val) (sort-by :id)))
 
+(defn select-one
+  "Возвращает первую строку таблицы, для которой значение указанной колонки
+  совпадает с заданным."
+  [table column value]
+  (some (fn [[_ row]] (when (= value (column row))
+                        row))
+        table))
+
+(defn sales-list
+  "Функция возвращает список продаж, связанных с сущностью из
+  соседней таблицы.
+  
+  - `table`  - таблица, в которой ищем сущность,
+  - `name`   - имя, по которому ищем,
+  - `forkey` - поле связи в таблице продаж."
+
+  [table name forkey]
+  (when-let [table-row (select-one table :name name)]
+    (->> sales
+         (filter (fn [[_ row]]
+                   (= (forkey row) (:id table-row))))
+         (map second))))
+
 (defn cust-sales
   "Возвращает общую сумму трат указанного клиента."
   [cust-name]
-  (when-let [[_ cust-row] (first (filter (fn [[_ row]] (= cust-name (:name row))) cust))]
-    (->> sales
-         (filter (fn [[_ row]]
-                   (= (:cust-id row) (:id cust-row))))
-         (map (fn [[_ sales-row]]
-                (* (:quantity sales-row) (-> (:prod-id sales-row) prod :price))))
-         (reduce +))))
+  (->> (sales-list cust cust-name :cust-id)
+       (map (fn [sales-row]
+              (* (:quantity sales-row) (-> (:prod-id sales-row) prod :price))))
+       (reduce +)))
 
 (defn prod-count
   "Возвращает количество проданных единиц указанного продукта."
   [prod-name]
-  (when-let [[_ prod-row] (first (filter (fn [[_ row]] (= prod-name (:name row))) prod))]
-    (->> sales
-         (filter (fn [[_ row]]
-                   (= (:prod-id row) (:id prod-row))))
-         (map (comp :quantity second))
-         (reduce +))))
+  (->> (sales-list prod prod-name :prod-id)
+       (map :quantity)
+       (reduce +)))
 
 (comment
+  (select-one cust :name "John Smith")
+  (sales-list cust "John Smith" :cust-id)
+  (sales-list prod "shoes" :prod-id)
   (cust-sales "John Smith")
-  (prod-count "shoes"))
+  (prod-count "jam"))
 
 (defn show-table
   "Показывает содержимое указанной таблицы. В качестве заголовка использует
@@ -212,7 +232,7 @@
   (when-let [customer (read-line)]
     (println
       (if-let [value (cust-sales customer)]
-        (str customer ": " (.toString value))
+        (str customer ": " value)
         "Unknown customer."))))
 
 (defn show-prod-count
@@ -255,16 +275,23 @@
        print)
   (flush))
 
-(defn menu-loop []
-  (loop []
-    (show-menu menu)
-    (let [option (parse-int (read-line))]
-      (if (and option (<= 1 option (count (:options menu))))
-        (let [function (-> menu :options (nth (dec option)) :function)]
-          (if function (do (function) (println) (recur))
-            (println "Program finished.")))
-        (do (println "Unknown option.\n") (recur))))))
+(defn menu-loop [menu]
+  (let [options-len (count (:options menu))]
+    (loop []
+      ;; Показываем меню.
+      (show-menu menu)
+      ;; Спрашиваем номер пункта меню у пользователя.
+      (let [option (parse-int (read-line))]
+        (if (and (some? option)
+                 (<= 1 option options-len))
+          ;; Если пользователь ввел число и это число соответствует пункту
+          ;; меню, выполняем заданное при определении меню действие.
+          (let [function (-> menu :options (nth (dec option)) :function)]
+            (if function
+              (do (function) (println) (recur))
+              (println "Program finished.")))
+          (do (println "Unknown option.\n") (recur)))))))
 
 (defn -main
-  [] (menu-loop))
+  [] (menu-loop menu))
 
