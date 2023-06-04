@@ -1,0 +1,28 @@
+{:core/db
+ {:config #profile {:local {:dbtype "postgres"
+                            :dbname "api_example_db"
+                            :host "localhost"
+                            :port 5432
+                            :user "postgres"
+                            :password "123"}
+                    :test {:dbtype "postgres"
+                           :dbname "api_example_db_test"
+                           :host "localhost"
+                           :port 5433
+                           :user "postgres"
+                           :password "123"}}}
+
+ :core/migrator
+ {:db #ig/ref :core/db}
+
+ :core/app
+ {:ds #ig/ref :core/migrator}
+
+ :core/server
+ {:app #ig/ref :core/app
+  :config #profile {:local {:host "127.0.0.1"
+                            :port 5555
+                            :join? false}
+                    :test {:host "127.0.0.1"
+                           :port 5556
+                           :join? false}}}}
