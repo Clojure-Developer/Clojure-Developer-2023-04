@@ -9,7 +9,7 @@
 
 (deftest id->url-test
  (testing "returns valid string"
-   (are [result expected] =
+   (are [expected actual] (= expected actual)
      "otus" (sut/id->url 3410886)
      "test" (sut/id->url 4544743)
      "007" (sut/id->url 203171)))
@@ -22,10 +22,9 @@
  (testing "throws exception on invalid arguments"
    (is (thrown? Exception (sut/id->url "otus")))))
 
-
 (deftest url->id-test
   (testing "returns valid number"
-    (are [result expected] =
+    (are [expected actual] (= expected actual)
       3410886 (sut/url->id "otus")
       4544743 (sut/url->id "test")
       203171 (sut/url->id "007")))
@@ -46,13 +45,14 @@
 
 (deftest ^:integration url-shortener-test
   (testing "should be able to shorten a url"
-    (let [url "https://www.google.com/"]
-      (tu/assert-output "Your short URL: http://otus-url/b"
-        (fn [] (sut/shorten-url url)))))
+    (let [url "https://www.google.com/"
+          expected "Your short URL: http://otus-url/b"
+          shorten-output (tu/get-output (sut/shorten-url url))]
+        (is (= expected shorten-output))))
 
   (testing "should be able to shorten a url and get it back"
     (let [url "https://www.google.com/"
-          shorter-output (str/trim (with-out-str (sut/shorten-url url)))
+          shorter-output (tu/get-output (sut/shorten-url url))
           shorter-url (str/replace shorter-output #"Your short URL: " "")
-          find-long-url-output (str/trim (with-out-str (sut/find-long-url shorter-url)))]
+          find-long-url-output (tu/get-output (sut/find-long-url shorter-url))]
       (is (= find-long-url-output (str "Your original URL: " url))))))
