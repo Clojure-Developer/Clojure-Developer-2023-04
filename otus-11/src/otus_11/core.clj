@@ -18,9 +18,14 @@
      (cons start
            (geom (* start mul) mul stop)))))
 
-(lazy-cat
- [1 2]
- '(3 4))
+;; ленивые последовательности, выраженные рекурсивно,
+;; не растят стек:
+
+(comment
+  (letfn [(ones [] (lazy-seq (cons 1 (ones))))]
+    (reduce + (take 1000000 (ones))))
+  ;; => 1000000
+  )
 
 ;; * Бесконечные последовательности
 
@@ -36,44 +41,80 @@
        [3])))
 
 (comment
-  (def chunks []
-    (lazy-cat
-     (lazy-seq [1 2 3])
-     (chunks))))
+  (print (take 2 three-nums)) ;; не напечатает сообщение
+  (print three-nums) ;; напечатает
+  (print three-nums) ;; не напечатает из-за кеширования
+  )
 
 ;; * Трансдьюсеры
 ;; ** reducers
 
 (defn conj-even
+  ;; инициализация аккумулятора
   ([] [])
+  ;; финализация аккумулятора
+  ([acc] acc)
+  ;; одиночный "шаг", получающий новое значение аккумулятора
+  ;; из старого значения аккумулятора и значения текущего элемента
+  ;; сворачиваемой последовательности
   ([acc v]
    (if (even? v)
      (conj acc v)
      acc)))
 
+(comment
+  (reduce conj-even [] (range 10))
+  ;; => [0 2 4 6 8]
+  )
+
 ;; ** transduce
+
+(comment
+  ;; transduce не требует указания начального значения аккумулятора,
+  ;; вместо этого вызывает (conj-even) перед началом сворачивания
+  ;; и (conj-even acc) в конце сворачивания
+  (transduce identity conj-even (range 10))
+  ;; => [0 2 4 6 8]
+  )
 
 (transduce (filter even?) conj (range 10))
 
 (defn conj-tr
+  "Работает как conj, но выводит свои аргументы при вызове."
   ([]
-   (println "(conj-tr)")
+   (println "(conj-tr) ;; init")
    [])
   ([acc]
-   (println (str "(conj-tr " acc ")"))
+   (println (str "(conj-tr " acc ") ;; finalize"))
    acc)
   ([acc v]
-   (println (str "(conj-tr " acc " " v ")"))
+   (println (str "(conj-tr " acc " " v ") ;; step"))
    (conj acc v)))
 
+(comment
+  (transduce identity conj-tr (range 5))
+  ;; (conj-tr) ;; init
+  ;; (conj-tr [] 0) ;; step
+  ;; (conj-tr [0] 1) ;; step
+  ;; (conj-tr [0 1] 2) ;; step
+  ;; (conj-tr [0 1 2] 3) ;; step
+  ;; (conj-tr [0 1 2 3] 4) ;; step
+  ;; (conj-tr [0 1 2 3 4]) ;; finalize
+  )
+
 (defn avg
+  "Сворачивает последовательность чисел в среднее значение."
   ([] [0 0])
   ([[s c]] (float (/ s c)))
   ([[s c] v] [(+ s v) (inc c)]))
 
-(transduce identity avg (range 10))
+(comment
+  (transduce identity avg (range 10))
+  ;; => 4.5
+  )
 
 (defn xmap [f]
+  "Упрощённый аналог map, работающий только как трасдьюсер."
   (fn [reducer]
     (fn
       ([]
@@ -84,6 +125,7 @@
        (reducer acc (f v))))))
 
 (defn xfilter [f]
+  "Упрощённый аналог filter, работающий только как трасдьюсер."
   (fn [reducer]
     (fn
       ([] (reducer))
@@ -94,11 +136,22 @@
          (reducer acc))
        ))))
 
-(transduce
- (comp (xfilter odd?)
-       (xmap str))
- conj
- (range 10))
+(comment
+  (= (transduce
+      (comp (xfilter odd?)
+            (xmap str))
+      conj
+      (range 10))
+
+     (transduce
+      ;; это уже встроенные map и filter, работающие в режиме
+      ;; трансдьюсеров
+      (comp (filter odd?)
+            (map str))
+      conj
+      (range 10)))
+  ;; => true
+  )
 
 ;; ** отладка
 
@@ -108,28 +161,65 @@
       (println (str prefix ": " args))
       (apply reducer args))))
 
-(transduce
- (comp (filter odd?)
-       (map str)
-       (trace ">"))
- conj
- (range 10))
+(comment
+  (transduce
+   (comp (filter odd?)
+         (map str)
+         (trace "trace"))
+   conj
+   (range 10))
+  ;; trace: ([] "1")
+  ;; trace: (["1"] "3")
+  ;; trace: (["1" "3"] "5")
+  ;; trace: (["1" "3" "5"] "7")
+  ;; trace: (["1" "3" "5" "7"] "9")
+  ;; trace: (["1" "3" "5" "7" "9"])
+  ;; заметьте, что инициализация аккумулятора с помощью трансдьюсеров
+  ;; не производилась — не было вызова без аргументов
 
-(transduce
- (comp (filter odd?)
-       (map str))
- ((trace ">") conj)
- (range 10))
+  (transduce
+   (comp (filter odd?)
+         (map str))
+   ((trace "trace") conj)
+   (range 10))
+  ;; trace:  ;; <- вот он, вызов без аргументов
+  ;; trace: ([] "1")
+  ;; trace: (["1"] "3")
+  ;; trace: (["1" "3"] "5")
+  ;; trace: (["1" "3" "5"] "7")
+  ;; trace: (["1" "3" "5" "7"] "9")
+  ;; trace: (["1" "3" "5" "7" "9"])
+  ;; редьюсер был вызван без аргументов для инициализации аккумулятора
+  )
 
 ;; ** into
 
-(into '() (map inc) (range 10))
+(comment
+  (into '() (map inc) (range 5))
+  ;; => (5 4 3 2 1)
+  (into [] (map inc) (range 10))
+  ;; => [1 2 3 4 5]
+  )
 
 ;; ** sequence
 
-(def convejor (comp (filter ..)
-                    (map ...
-                         )
-                    (filter ...)))
-
-(sequence convejor (range 10))
+(comment
+  (let [s (take 3 (sequence (trace "trace") (range 5)))]
+    (println "Здесь s ещё не просчитана до конца")
+    ;; как только начнётся первый обход полученной последовательности,
+    ;; будет произведён прогон трансдьюсера до конца
+    ;; входной последовательности, то есть ленивость "закончится"
+    [(count s)
+     (count s)]
+    )
+  ;; trace: (nil 0)
+  ;; Здесь s ещё не просчитана до конца
+  ;; trace: (nil 1)
+  ;; trace: (nil 2)
+  ;; trace: (nil 3)
+  ;; trace: (nil 4)
+  ;; trace: (nil)
+  ;; => [3 3]
+  ;; увы, ленивость не получилось сохранить и range доработал до конца,
+  ;; но кеширование работает — trace не повторяется
+  )
