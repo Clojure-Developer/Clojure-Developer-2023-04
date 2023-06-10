@@ -20,7 +20,6 @@
 (defn get-symbol-by-idx [i]
   (get symbols (rem i 62)))
 
-
 (defn id->url [id]
   (let [idx-sequence  (iterate get-idx id)
         valid-idxs    (take-while #(> % 0) idx-sequence)
@@ -43,8 +42,6 @@
      0
      url-symbols)))
 
-
-
 ;; =============================================================================
 ;; Application API
 ;; =============================================================================
@@ -56,25 +53,27 @@
 
 (def host "http://otus-url/")
 
-
-(defn shorten-url [url]
+(defn do-shorten-url [db url]
   (spit db url :append true)
   (spit db \newline :append true)
 
   (with-open [file (io/reader db)]
     (let [url-id (count (line-seq file))
           hash   (id->url url-id)]
-      (println "Your short URL:" (str host hash)))))
+      (str host hash))))
 
+(defn shorten-url [url]
+  (println "Your short URL:" (do-shorten-url db url)))
 
-(defn find-long-url [url]
+(defn do-find-long-url [db url]
   (let [hash        (subs url (count host))
         line-number (url->id hash)]
     (with-open [file (io/reader db)]
       (let [original-url (nth (line-seq file) (dec line-number))]
-        (println "Your original URL:" original-url)))))
+        original-url))))
 
-
+(defn find-long-url [url]
+  (println "Your original URL:" (do-find-long-url db url)))
 
 (defn -main [command url]
   (when-not (.exists db)
@@ -84,8 +83,6 @@
     "shorten" (shorten-url url)
     "find" (find-long-url url)
     (println "Unknown command:" command)))
-
-
 
 (comment
 
