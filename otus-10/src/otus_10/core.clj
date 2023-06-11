@@ -40,7 +40,7 @@
 
 (str (.append (grocery-list [:eggs]) :tomatoes))
 
-(.append [1 2] 3)
+#_(.append [1 2] 3)
 
 ;; proxy
 (let [p (proxy [java.io.InputStream] []
@@ -73,7 +73,7 @@
 ;; (doc Append)
 ;; (doc append)
 
-(append (grocery-list [:eggs]) :tomatoes)
+#_(append (grocery-list [:eggs]) :tomatoes)
 
 #_:clj-kondo/ignore
 (defn grocery-list
@@ -90,14 +90,14 @@
 
 (str (append (grocery-list [:eggs]) :tomatoes))
 
-(append [1 2] 3)
+#_(append [1 2] 3)
 
 (extend-protocol Append
   clojure.lang.IPersistentVector
   (append [v x]
     (conj v x)))
 
-(append '() 2)
+#_(append '() 2)
 
 (extend-protocol Append
   clojure.lang.IPersistentVector
@@ -108,7 +108,7 @@
   (append [v x]
     (concat v (list x))))
 
-(append nil 2)
+#_(append nil 2)
 
 (extend-protocol Append
   nil
