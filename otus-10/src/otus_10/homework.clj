@@ -29,33 +29,38 @@
 (defn parse-tag-header
   "Parse tag header without tag identifier"
   [bytes]
-  (let [bs (vec bytes)
-        version (subvec bs 0 2)
-        flags (get bs 2)
-        size (subvec bs 3)]
-    {:version (first version)
-     :flags (parse-id3-header-flags flags)
-     :size (sync-safe->int size)}))
+  (when (= (count bytes) (- tag-header-size tag-identifier-size))
+    (let [bs (vec bytes)
+          version (subvec bs 0 2)
+          flags (get bs 2)
+          size (subvec bs 3)]
+      {:version (first version)
+       :flags (parse-id3-header-flags flags)
+       :size (sync-safe->int size)})))
 
 (defn parse-frame-header
   [bytes]
-  (let [bs (vec bytes)
-        id (subvec bs 0 4)
-        size (subvec bs 4 8)
-        flags (subvec bs 8)
-        int-size (sync-safe->int size)]
-    {:id (apply str (map char id))
-     :size int-size
-     :flags flags}))
+  (if (= (count bytes) frame-header-size)
+    (let [bs (vec bytes)
+          id (subvec bs 0 4)
+          size (subvec bs 4 8)
+          flags (subvec bs 8)
+          int-size (sync-safe->int size)]
+      {:id (apply str (map char id))
+       :size int-size
+       :flags flags})
+    {:id "" :size 0 :flags []}))
 
 (defn read-n-bytes
   [input n]
-  (let [bytes (byte-array n)
-        k (max 0 (try (.read input bytes)
-                      (catch Exception e (println e) 0)))]
-    (if (< k n)
-      [(byte-array (take k bytes)) k]
-      [bytes n])))
+  (if (pos? n)
+    (let [bytes (byte-array n)
+          k (max 0 (try (.read input bytes)
+                        (catch Exception e (println e) 0)))]
+      (if (< k n)
+        [(byte-array (take k bytes)) k]
+        [bytes n]))
+    [(byte-array 0) 0]))
 
 (defn skip-ext-header
   [input]
@@ -82,6 +87,7 @@
 (defmethod decode-frame-text 1 [[_ & bytes]] (new String (byte-array bytes) "UTF-16"))
 (defmethod decode-frame-text 2 [[_ & bytes]] (new String (byte-array bytes) "UTF-16BE"))
 (defmethod decode-frame-text 3 [[_ & bytes]] (new String (byte-array bytes) "UTF-8"))
+(defmethod decode-frame-text :default  [_] "")
 
 (defmulti format-frame #(get-in % [:header :id]))
 (defmethod format-frame "TALB" [{text :text}] (format "Album: %s" text))
@@ -108,23 +114,24 @@
 (defn get-frames
   [input tag-header]
   (let [total-size (:size tag-header)
-        skipped (skip-ext-header-if-exists input tag-header)
-        frames-size (- total-size skipped)]
+        skipped-count (skip-ext-header-if-exists input tag-header)
+        frames-size (- total-size skipped-count)]
     (get-frames-seq input frames-size)))
 
-(defn read-slice-window-seq
-  "Read with slice window of fixes size"
+(defn read-sliding-window-seq
+  "Read with sliding window of fixed size"
   [input n]
   (letfn [(provide-next-chunk [chunk]
             (let [[one-byte-chunk k] (read-n-bytes input 1)
                   new-chunk (if (pos? k)
                               (concat (rest chunk) one-byte-chunk)
                               nil)]
-              (cons new-chunk (lazy-seq (provide-next-chunk new-chunk)))))]
+              (when new-chunk
+                (cons new-chunk (lazy-seq (provide-next-chunk new-chunk))))))]
 
     (let [[chunk k] (read-n-bytes input n)]
       (when (pos? k)
-        (cons chunk
+        (cons (apply list chunk)
               (lazy-seq
                 (provide-next-chunk chunk)))))))
 
@@ -134,16 +141,19 @@
 
 (defn get-tag-header
   [input]
-  (let [chunks (read-slice-window-seq input tag-identifier-size)]
+  (let [chunks (read-sliding-window-seq input tag-identifier-size)]
     (when (some is-tag-identifier? chunks)
       (let [rest-tag-header-size (- tag-header-size tag-identifier-size)
             [bytes _] (read-n-bytes input rest-tag-header-size)]
         (parse-tag-header bytes)))))
 
-(defn get-tag [file-path]
+(defn get-tag [input]
+  (when-let [tag-header (get-tag-header input)]
+    {:header tag-header :frames (vec (get-frames input tag-header))}))
+
+(defn get-tag-from-file-path [file-path]
   (with-open [input (io/input-stream file-path)]
-    (when-let [tag-header (get-tag-header input)]
-      {:header tag-header :frames (vec (get-frames input tag-header))})))
+    (get-tag input)))
 
 (defn exit
   [text code]
@@ -156,7 +166,7 @@
     (exit "Pass path to mp3 file as an argument of program" -1))
 
   (let [file-path (first args)
-        tag (get-tag file-path)
+        tag (get-tag-from-file-path file-path)
         {id3-header :header} tag]
     (when (nil? id3-header)
       (exit "Couldn't find ID3 header from mp3 file" -1))
