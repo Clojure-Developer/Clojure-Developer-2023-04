@@ -1,33 +1,24 @@
 (ns url-shortener.core-test
   (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
+            [test-utils :as tu]
             [url-shortener.core :as sut]))
 
 (def symbols "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
 (def base-number (count symbols))
+(def test-db-file-name "test-short-url-and-back.txt")
 
-(defn rand-integers
-  ([]
-   (repeatedly #(rand-int Integer/MAX_VALUE)))
-  ([n]
-   (take n (rand-integers))))
+(defn fix-with-tmp-file [t]
+  (t)
+  (io/delete-file test-db-file-name true))
 
-(defn do-test-on-random-int-inputs
-  [n expected-fn got-fn]
-  (let [random-inputs (rand-integers n)
-        expected (map expected-fn random-inputs)
-        got (map got-fn random-inputs)]
-    (is (= expected got) (format "fail for input = %s" (apply list random-inputs)))))
-
-(defmacro do-test-on-incorrect-inputs [test-fn & inputs]
-  `(are [input#] (~'thrown? Exception (~test-fn input#)) ~@inputs))
+(use-fixtures :once fix-with-tmp-file)
 
 (deftest test-get-idx
   (testing "random inputs"
-    (do-test-on-random-int-inputs 100 #(quot % base-number) (comp int sut/get-idx)))
+    (tu/do-test-on-random-int-inputs 100 #(quot % base-number) (comp int sut/get-idx)))
 
-  (testing "ranged-inputs"
+  (testing "ranged inputs"
     (are [ranged-inputs expected] (every? #(= expected %) (map sut/get-idx ranged-inputs))
           (range 0 base-number) 0.0
           (range (inc base-number) (* 2 base-number)) 1.0
@@ -39,12 +30,9 @@
           (range (inc (* 7 base-number)) (* 8 base-number)) 7.0
           (range (inc (* 8 base-number)) (* 9 base-number)) 8.0
           (range (inc (* 9 base-number)) (* 10 base-number)) 9.0
-          (range (inc (* 10 base-number)) (* 11 base-number)) 10.0
-          (range (inc (* 11 base-number)) (* 12 base-number)) 11.0
-          (range (inc (* 12 base-number)) (* 13 base-number)) 12.0
-          (range (inc (* 13 base-number)) (* 14 base-number)) 13.0))
+          (range (inc (* 10 base-number)) (* 11 base-number)) 10.0))
 
-  (testing "fixed-inputs"
+  (testing "fixed inputs"
     (are [input expected] (= expected (sut/get-idx input))
           5432345 87618.0
           12312312 198585.0
@@ -52,14 +40,30 @@
           Integer/MAX_VALUE 3.4636833E7))
 
   (testing "incorrect input"
-    (do-test-on-incorrect-inputs sut/get-idx "123" "" nil [] [123] {})))
+    (tu/do-test-on-incorrect-inputs sut/get-idx "123" "" nil [] [123] {})))
 
 (deftest test-get-symbol-by-idx
   (testing "random inputs"
-    (do-test-on-random-int-inputs 100 #(get symbols (rem % base-number)) sut/get-symbol-by-idx))
+    (tu/do-test-on-random-int-inputs 100 #(get symbols (rem % base-number)) sut/get-symbol-by-idx))
+
+  (testing "ranged inputs"
+    (let [result (->> (range 0 (* 10 base-number))
+                      (map sut/get-symbol-by-idx)
+                      (apply str))
+          expected (->> (repeat 10 symbols)
+                        (apply str))]
+      (is (= result expected))))
+
+  (testing "fixed inputs"
+    (are [input expected] (= expected (sut/get-symbol-by-idx input))
+          6515412 \s
+          509120912 \M
+          1555123 \N
+          Integer/MAX_VALUE \b))
+
 
   (testing "incorrect input"
-    (do-test-on-incorrect-inputs sut/get-symbol-by-idx "123" "" nil [] [123] {})))
+    (tu/do-test-on-incorrect-inputs sut/get-symbol-by-idx "123" "" nil [] [123] {})))
 
 (deftest test-id->url
   (testing "range from base number to double base number"
@@ -92,7 +96,7 @@
 
 (deftest test-id-to-url-and-back
   (testing "random inputs"
-    (let [inputs (rand-integers 100)
+    (let [inputs (tu/rand-integers 100)
           urls (map sut/id->url inputs)
           idx (map sut/url->id urls)]
       (is (= inputs idx) (format "fail for input = %s" (apply list inputs))))))
