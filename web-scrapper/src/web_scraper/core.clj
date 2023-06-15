@@ -1,10 +1,9 @@
-(ns web-scrapper.core
+(ns web-scraper.core
   (:require
    [clj-http.client :as http]
    [clojure.string :as string])
   (:import
    [org.jsoup Jsoup]))
-
 
 
 ;; testing
@@ -25,6 +24,10 @@
     (.select "[data-test=job-salary]")
     (.text))
 
+
+(-> (first job-list)
+    (.select "[class^=job_card__company__name]")
+    (.text))
 
 
 
@@ -49,8 +52,7 @@
           job-list)))
 
 
-(get-jobs-salaries "clojure")
-
+(get-jobs-salaries "haskell")
 
 
 
@@ -98,48 +100,44 @@
              (get-jobs-salaries lang next-page))))))
 
 
+
 (->> (get-jobs-salaries "clojure" 1)
      (flatten)
-     (take 40))
+     (take 5))
 
 
-(->> (get-jobs-salaries "haskell" 1)
+(->> (get-jobs-salaries "aws" 1)
      (flatten)
      (take 40))
-
-
-
-
 
 
 
 
 
 ;; generalize
-
-(defprotocol PScrapper
+(defprotocol PScraper
   (next-request [_ opts])
   (extract-data [_ page])
   (next-options [_ page opts])
   (continue? [_ opts]))
 
 
-(defn sequential-scrapping [scrapper options]
+(defn sequential-scraping [scraper options]
   (lazy-seq
-   (let [request      (next-request scrapper options)
+   (let [request      (next-request scraper options)
          html         ^String (-> request http/request :body)
          page         (Jsoup/parse html)
-         page-data    (extract-data scrapper page)
-         next-options (next-options scrapper page options)]
+         page-data    (extract-data scraper page)
+         next-options (next-options scraper page options)]
      (cons page-data
-           (when (continue? scrapper next-options)
-             (sequential-scrapping scrapper next-options))))))
+           (when (continue? scraper next-options)
+             (sequential-scraping scraper next-options))))))
 
 
 
-;; jobs scrapper specific part
-(defrecord JobsScrapper [base-url]
-  PScrapper
+;; jobs scraper specific part
+(defrecord JobsScraper [base-url]
+  PScraper
   (next-request [_ {:keys [lang page]}]
     (let [url (format "%s/jobs?tags=%s&page=%s" base-url lang page)]
       {:method :get
@@ -170,10 +168,8 @@
     (some? (:page opts))))
 
 
-
-
-(->> (sequential-scrapping
-      (->JobsScrapper "https://functional.works-hub.com")
+(->> (sequential-scraping
+      (->JobsScraper "https://functional.works-hub.com")
       {:lang "clojure" :page 1})
      (flatten)
      (take 5))

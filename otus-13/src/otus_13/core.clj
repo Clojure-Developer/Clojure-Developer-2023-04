@@ -13,6 +13,7 @@
 
 
 
+
 ;; GET, POST, PUT, DELETE
 
 (http/get "http://localhost:80/json")
@@ -33,9 +34,7 @@
            :as      :json})
 
 
-
-
-;; All the request options
+;; All request options
 
 ;; :url
 ;; :method
@@ -111,11 +110,11 @@
 
 
 
+
 ;; coercion
 
 ;; :byte-array, :json, :json-string-keys, :transit+json, :transit+msgpack, :clojure,
 ;; :x-www-form-urlencoded, :stream, :reader
-
 
 (def response
   (http/get "http://localhost:80/stream/10"
@@ -127,12 +126,9 @@
 (isa? (class (:body response)) InputStream)
 
 
-(-> (io/reader (:body response))
-    (line-seq)
-    (first)
-    (cheshire/parse-string true))
-
-
+(->> (io/reader (:body response))
+     (line-seq)
+     (mapv #(cheshire/parse-string % true)))
 
 
 
@@ -145,8 +141,8 @@
 
 
 
-;; custom CSV coercion
 
+;; custom CSV coercion
 (defmethod http/coerce-response-body :csv [request {:keys [body] :as response}]
   (if (or (http/server-error? response)
           (http/client-error? response))
@@ -171,6 +167,7 @@ Ronaldo,38,72M")
                {:body my-csv-str
                 :as   :csv})
     :body)
+
 
 
 
@@ -208,7 +205,7 @@ Ronaldo,38,72M")
 (try+
  (throw+ {:foo "bar"})
  (throw+ 152)
- (throw+ (ex-info "Error" {:foo "bar"}))
+ (throw+ (ex-info "Error" {:foo "baz"}))
  (throw+ (Exception. "Exception"))
  (throw+ (Throwable. "Error"))
 
@@ -227,7 +224,6 @@ Ronaldo,38,72M")
  (catch Throwable t
    (println "caught throwable")
    (println t)))
-
 
 
 
@@ -250,7 +246,6 @@ Ronaldo,38,72M")
 
 
 ;; async request
-
 (http/get "http://localhost:80/delay/5"
           {:async? true :as :json}
           (fn [response] (println "response is:" (:body response)))
@@ -259,8 +254,8 @@ Ronaldo,38,72M")
 
 
 
-;; pagination, iteration
 
+;; pagination
 (defn get-data-page [page]
   (println "page request" page)
   (-> (http/post "http://localhost:80/anything"
@@ -288,15 +283,16 @@ Ronaldo,38,72M")
 (def data
   (flatten (get-paginated-data 0)))
 
+
 (type data)
 
-(take 10 data)
+(take 30 data)
 
 
 
 
 
-
+;; iteration
 (def data-2
   (->> (iteration get-data-page
                   :initk 0
@@ -304,12 +300,12 @@ Ronaldo,38,72M")
                   :vf :data)
        (sequence cat)))
 
-(take 10 data-2)
+(take 40 data-2)
 
 
 
 
-
+;; lazy concat
 (defn lazy-concat [colls]
   (lazy-seq
    (when-first [c colls]
@@ -323,7 +319,7 @@ Ronaldo,38,72M")
                   :vf :data)
        (lazy-concat)))
 
-(take 10 data-3)
+(take 20 data-3)
 
 
 (->> (get-paginated-data 0)

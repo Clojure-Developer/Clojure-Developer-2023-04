@@ -13,6 +13,7 @@
       :slideshow))
 
 
+
 (deftest fake-http-example-test
 
   (with-fake-routes
@@ -30,9 +31,8 @@
 
 
   #_(with-fake-routes
-     {"http://localhost:80/json"
-      ;;#"http:.*/json"
-      ;;{:address "http://localhost:80/json" :query-params {:search "author"}}
+     {;; #"http:.*/json"
+      {:address "http://localhost:80/json" :query-params {:search "author"}}
       (fn [request]
         {:status 200
          :body   (cheshire/generate-string
