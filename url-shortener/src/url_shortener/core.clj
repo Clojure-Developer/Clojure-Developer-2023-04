@@ -65,7 +65,7 @@
 (defn shorten-url [url]
   (println "Your short URL:" (get-shorten-url db url)))
 
-(defn get-find-long-url [db url]
+(defn get-long-url [db url]
   (let [hash        (subs url (count host))
         line-number (url->id hash)]
     (with-open [file (io/reader db)]
@@ -73,7 +73,7 @@
         original-url))))
 
 (defn find-long-url [url]
-  (println "Your original URL:" (get-find-long-url db url)))
+  (println "Your original URL:" (get-long-url db url)))
 
 (defn -main [command url]
   (when-not (.exists db)

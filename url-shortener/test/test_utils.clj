@@ -16,3 +16,11 @@
 
 (defmacro do-test-on-incorrect-inputs [test-fn & inputs]
   `(are [input#] (~'thrown? Exception (~test-fn input#)) ~@inputs))
+
+(defn fix-with-tmp-file
+  [filevar filename]
+  (fn [t]
+    (let [file (java.io.File/createTempFile filename nil)]
+      (with-bindings {filevar file}
+        (t)
+        (clojure.java.io/delete-file file)))))

@@ -6,13 +6,12 @@
 
 (def symbols "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 (def base-number (count symbols))
+
+(def ^:dynamic *test-db*)
 (def test-db-file-name "test-short-url-and-back.txt")
 
-(defn fix-with-tmp-file [t]
-  (t)
-  (io/delete-file test-db-file-name true))
-
-(use-fixtures :once fix-with-tmp-file)
+(use-fixtures :each
+  (tu/fix-with-tmp-file #'*test-db* test-db-file-name))
 
 (deftest test-get-idx
   (testing "random inputs"
@@ -103,10 +102,10 @@
 
 (deftest test-short-url-and-back
   (testing "positive cases"
-    (let [db (io/as-file "test-short-url-and-back.txt")]
+    (let [db *test-db*]
       (are [original] (= original (->> original
                                        (sut/get-shorten-url db)
-                                       (sut/get-find-long-url db)))
+                                       (sut/get-long-url db)))
         "https://clojure.org/about/rationale"
         "https://otus.ru/lessons/clojure-developer/"
         "https://google.com"))))
