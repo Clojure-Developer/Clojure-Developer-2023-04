@@ -35,11 +35,10 @@
                                            (get (:type element))
                                            s/gen
                                            gen/generate)) schema)]
-      {:ok? true :data data})
+      {:ok? true :data (generate-string data)})
     (catch Exception e
       (println "Error: " (.getMessage e))
       {:ok? false :error (.getMessage e)})))
-
 
 (comment
   (run-jetty #'app
