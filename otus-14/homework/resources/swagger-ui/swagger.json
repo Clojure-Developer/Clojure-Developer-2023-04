@@ -1,0 +1,98 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "A JSON Schema for Swagger 2.0 API.",
+    "version": "0.0.1"
+  },
+  "definitions": {
+    "AnyValue": {}
+  },
+  "paths": {
+    "/generate": {
+      "post": {
+        "summary": "generate data by one-dimensional dynamic model",
+        "tags": ["api"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "spec",
+            "description": "Generate data by dynamic model where **type** is required and **format** is optional\nSuitable combination: **number** (*&lt;skipped&gt;* | **float** | **double**), **integer** (*&lt;skipped&gt;* | **int32** | **int64**), (*&lt;skipped&gt;* | **date** | **date-time**)\n",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["number", "integer", "string"]
+                  },
+                  "format": {
+                    "type": "string",
+                    "enum": ["float", "double", "int-32", "int-64", "date", "date-time"]
+                  }
+                },
+                "required": ["type"]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result generated data for each field passed to handler",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/AnyValue"
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/": {
+      "post": {
+        "summary": "generate data by one-dimensional dynamic model",
+        "tags": ["ui"],
+        "parameters": [
+          {
+            "in": "formData",
+            "name": "spec",
+            "description": "Generate data by dynamic model (same as **<a href='#/api/post_generate'>POST /generate</a>** endpoint) but created for html textarea UI",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to page where results are displaying (another words here **GET /?spec=...**)"
+          }
+        }
+      },
+      "get": {
+        "summary": "generate data by one-dimensional dynamic model",
+        "tags": ["ui"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "spec",
+            "description": "Generate data by dynamic model (same as **<a href='#/api/post_generate'>POST /generate</a>** endpoint) but created for html textarea UI",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page with generated data"
+          }
+        }
+      }
+    }
+  }
+}

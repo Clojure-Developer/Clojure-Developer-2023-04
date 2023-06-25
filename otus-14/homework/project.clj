@@ -7,7 +7,11 @@
                  [ring/ring-jetty-adapter "1.10.0"]
                  [ring/ring-defaults "0.3.4"]
                  [compojure "1.7.0"]
+                 [metosin/ring-swagger-ui "5.0.0-alpha.0"]
+                 [metosin/ring-swagger "0.26.2"]
                  [hiccup "1.0.5"]
+                 [cheshire "5.11.0"]
+                 [org.clojure/test.check "1.1.1"]
                  [cheshire "5.11.0"]]
   :main ^:skip-aot spec-faker.core
   :target-path "target/%s"
