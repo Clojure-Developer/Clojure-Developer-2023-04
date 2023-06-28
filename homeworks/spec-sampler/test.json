@@ -1,0 +1,35 @@
+{"type": "object",
+"properties": {
+    "name": {"type": "string"},
+    "phone": {"type": "string", "format": "phone"},
+    "site": {"type": "string", "format": "url"},
+    "email": {"type": "string", "format": "email"},
+    "age": {"type": "integer",  "format": "pos"},
+    "int": {"type": "integer"},
+    "price": {"type": "number",  "format": "double"},
+    "num-int": {"type": "number",  "format": "integer"},
+    "number": {"type": "number"}
+    }
+}
+
+{
+    "type": "object",
+    "properties": {
+        "person": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer",  "format": "pos"}
+            }
+        },
+        "contact": {
+            "type": "object",
+            "properties":{
+                "phone": {"type": "string", "format": "phone"},
+                "email": {"type": "string", "format": "email"}
+            }
+        }
+    }
+}
+
+
