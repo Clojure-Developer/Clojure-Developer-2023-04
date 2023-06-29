@@ -4,13 +4,60 @@
    [clojure.string :as str])
   (:import
    [java.io BufferedReader Writer]
-   [java.net ServerSocket])
+   [java.net ServerSocket]
+   [java.util.concurrent Executors ScheduledExecutorService TimeUnit])
   (:gen-class))
 
 
 ;; используем атом в качестве in-memory хранилища
 (def database
   (atom {}))
+
+
+(def keys-to-expire
+  (atom []))
+
+
+(defn expire-key [key]
+  (fn []
+    (swap! database assoc key nil)
+    (swap! keys-to-expire
+           (fn [expire-keys]
+             (remove #(= (second %) key) expire-keys)))))
+
+
+(defn set-key-to-expire [key timestamp]
+  (swap! keys-to-expire
+         (fn [expire-keys]
+           (-> (conj expire-keys [timestamp key])
+               (sort-by first)
+               (vec)))))
+
+
+(comment
+ @keys-to-expire
+ (set-key-to-expire "name" 123123123)
+ (expire-key "name"))
+
+
+(def ^ScheduledExecutorService cleanup-pool
+  (Executors/newScheduledThreadPool 10))
+
+
+(defn schedule-cleanup-task []
+  (let [current-time       (System/currentTimeMillis)
+        five-seconds-later (+ current-time 5000)
+        keys-to-schedule   (->> @keys-to-expire
+                                (take-while #(< (first %) five-seconds-later)))]
+    (doseq [[timestamp key] keys-to-schedule]
+      (.schedule cleanup-pool
+                 ^Runnable (expire-key key)
+                 ^Long (- timestamp current-time)
+                 TimeUnit/MILLISECONDS))))
+
+
+(defn start-cleanup-worker []
+  (.scheduleAtFixedRate cleanup-pool schedule-cleanup-task 0 5 TimeUnit/SECONDS))
 
 
 
@@ -36,19 +83,23 @@
   (swap! database assoc key val)
 
   (when (and opt (= (.toUpperCase opt) "PX"))
-    (let [timeout (Integer/parseInt optarg)]
-      (future
-       (Thread/sleep timeout)
-       (swap! database assoc key nil))))
+    (let [delay        (Integer/parseInt optarg)
+          current-time (System/currentTimeMillis)
+          timestamp    (+ current-time delay)]
+      (if (< timestamp (+ current-time 5000))
+        (.schedule cleanup-pool ^Runnable (expire-key key) delay TimeUnit/MILLISECONDS)
+        (set-key-to-expire key timestamp))))
+
   ;; ответ клиенту
   "OK")
 
 
 (defmethod handle-command :get
   [[_ [key-len key]]]
-  (if-some [entry (find @database key)]
-    (val entry)
-    "(nil)"))
+  (let [entry (find @database key)]
+    (if (some? (val entry))
+      (val entry)
+      "(nil)")))
 
 
 ;; needed for redis-cli
@@ -154,19 +205,22 @@
 
 
 ;; graceful shutdown
-(defn shutdown-hook [server]
+(defn shutdown-hook [server worker]
   (.addShutdownHook (Runtime/getRuntime)
                     (Thread. ^Runnable
                              (fn []
                                (.close server)
+                               (future-cancel worker)
+                               (.shutdown cleanup-pool)
                                (shutdown-agents)))))
 
 
 ;; точка входа
 (defn -main
   [& args]
-  (let [server (run-server 6379 handle-message)]
-    (shutdown-hook server)
+  (let [server (run-server 6379 handle-message)
+        worker (start-cleanup-worker)]
+    (shutdown-hook server worker)
     server))
 
 
@@ -176,6 +230,7 @@
    (-main))
 
  @database
+ @keys-to-expire
 
  (.close server)
  nil)
