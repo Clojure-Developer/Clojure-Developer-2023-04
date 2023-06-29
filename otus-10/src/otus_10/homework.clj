@@ -77,7 +77,8 @@
   [in n]
   (let [bs (byte-array n)
         nr (.read in bs)]
-    (if (= n nr) bs
+    ;; Преобразуем в беззнаковые числа.
+    (if (= n nr) (mapv (partial bit-and 16rFF) bs)
       nil)))
 
 (defn get-byte
@@ -162,7 +163,7 @@
   (->> (get-bytes in n)
        reverse
        (map-indexed (fn [i b]
-                      (bit-shift-left b (* 7 i))))
+                      (bit-shift-left (bit-and b 16r7f) (* 7 i))))
        (reduce +)
        (assoc-in (update parsed :-offset + n)
                  (conj path (:name fmt)))))
