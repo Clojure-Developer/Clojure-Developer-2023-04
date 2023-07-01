@@ -16,14 +16,14 @@
            ;; :if пути истиннен.
            :if [:id3v2 :header :flags :header-ex]}
           {:name :frames    :type :repeat
-           :repeat-type :frame
+           :repeat {:type :frame}
            ;; Элементы типа :repeat будут повторяться, пока функция возвращает истину.
-           :repeat-fn (fn [parsed _path]
-                        ;; Парсим фреймы, пока не выйдем за пределы заголовка или пока не 
-                        ;; получим невалидный фрейм.
-                        (and (< (get parsed :-offset) (get-in parsed [:id3v2 :header :size]))
-                             (let [frames (get-in parsed [:id3v2 :frames])]
-                               (or (empty? frames) (:valid (last frames))))))}]}
+           :repeat-while-fn (fn [parsed _path]
+                              ;; Парсим фреймы, пока не выйдем за пределы заголовка или пока не 
+                              ;; получим невалидный фрейм.
+                              (and (< (get parsed :-offset) (get-in parsed [:id3v2 :header :size]))
+                                   (let [frames (get-in parsed [:id3v2 :frames])]
+                                     (or (empty? frames) (:valid (last frames))))))}]}
    :header
    {:type :seq
     :seq [{:name :magic            :type :magic :contents "ID3"}
@@ -247,16 +247,15 @@
 (defmethod parse-type :repeat
   [in parsed path types fmt]
   "Метод для парсинга базового типа: повторяющихся элементов. Элементы будут
-  парситься, пока истинно значение функции из ключа :repeat-fn. Тип элементов
+  парситься, пока истинно значение функции из ключа :repeat-while-fn. Тип элементов
   описывается ключом :repeat-type.
   Результатом парсинга будет вектор."
-  (let [repeat-fn (:repeat-fn fmt)
-        repeat-type (types (:repeat-type fmt))
+  (let [repeat-while-fn (:repeat-while-fn fmt)
         path (conj path (:name fmt))]
     (loop [parsed (assoc-in parsed path [])
            i 0]
-      (if (repeat-fn parsed path)
-        (recur (parse-type in parsed (conj path i) types repeat-type)
+      (if (repeat-while-fn parsed path)
+        (recur (parse-type in parsed path types (assoc (:repeat fmt) :name i))
                (inc i))
         parsed))))
 
@@ -328,7 +327,7 @@
   [frame]
   (str "Год выпуска: " (parse-text (:data frame))))
 
-(defmethod parse-tag "TALB"
+(defmethod parse-tag "TCON"
   [frame]
   (str "Жанр: " (parse-text (:data frame))))
 
@@ -344,8 +343,7 @@
          ;; Для остальных список байтов.
          (str/join " " (map (partial format "%02x") (:data frame))))))
 
-(let [filename (str (System/getenv "HOME")
-                    "/Downloads/file-12926-ed090b.mp3")]
+(defn main- [filename]
   (with-open [in (io/input-stream filename)]
     (let [parsed (parse-type in {:-offset 0} [] id3v2-types id3v2-format)]
       ;; Выделяем текстовые теги и показываем печатаем их значения.
@@ -354,3 +352,7 @@
            (map parse-tag)
            (str/join "\n")
            println))))
+
+(comment
+  (main- (str (System/getenv "HOME")
+              "/Downloads/file-12926-ed090b.mp3")))
