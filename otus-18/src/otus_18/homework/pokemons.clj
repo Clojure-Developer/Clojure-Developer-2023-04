@@ -2,7 +2,7 @@
   (:require
    [clojure.core.async
     :as async
-    :refer [chan <! >! <!! go pipeline-async close! thread]]
+    :refer [chan <!! <! >! go pipeline-async close! thread]]
    [clj-http.client :as http]))
 
 (def base-url     "https://pokeapi.co/api/v2")
@@ -21,14 +21,14 @@
 
 (defn pokemon-request
   [& {:keys [name lang]}]
-  (async-request {:url          (str pokemons-url name)
+  (async-request {:url          (str pokemons-url "/" name)
                   :method       :get
                   :as           :json
                   :query-params {:lang lang}}))
 
 (defn type-request
   [& {:keys [type]}]
-  (async-request {:url          (str type-path type)
+  (async-request {:url          (str type-path "/" type)
                   :method       :get
                   :as           :json}))
 
@@ -52,15 +52,15 @@
     (fn [types lang]
       (let [result> (chan)]
         (go
-         (doseq [type types]
-           (let [cached (get-in @cache [type lang])]
-             (if cached
-               (>! result> cached)
-               (let [type-result (:body (<! (type-request :type type)))
-                     type-name   (extract-type-name type-result lang)]
-                 (swap! cache assoc-in [type lang] type-name)
-                 (>! result> type-name)))))
-         (close! result>))
+          (doseq [type types]
+            (let [cached (get-in @cache [type lang])]
+              (if cached
+                (>! result> cached)
+                (let [type-result (:body (<! (type-request :type type)))
+                      type-name   (extract-type-name type-result lang)]
+                  (swap! cache assoc-in [type lang] type-name)
+                  (>! result> type-name)))))
+          (close! result>))
         result>))))
 
 (defn get-pokemons
@@ -93,3 +93,4 @@
           (close! pokemons>)))
 
     (<!! (async/into {} pokemons->types>))))
+
