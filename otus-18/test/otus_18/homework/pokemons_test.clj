@@ -7,13 +7,14 @@
 
 (deftest get-pokemons-test
   (with-fake-routes
-    {"https://pokeapi.co/api/v2/pokemon/"
+    {"https://pokeapi.co/api/v2/pokemon/?limit=50"
      (fn [_request]
        {:status 200
         :body (cheshire/generate-string
                {:results
                 [{:name "pikachu"
                   :url "https://pokeapi.co/api/v2/pokemon/1/"}]})})
+
      "https://pokeapi.co/api/v2/pokemon/pikachu/"
      (fn [_request]
        {:status 200
@@ -22,6 +23,7 @@
                 :types [{:slot 1
                          :type {:name "electric",
                                 :url "https://pokeapi.co/api/v2/type/13/"}}]})})
+
      "https://pokeapi.co/api/v2/pokemon/1/"
      (fn [_request]
        {:status 200
@@ -30,20 +32,22 @@
                 :types [{:slot 1
                          :type {:name "electric",
                                 :url "https://pokeapi.co/api/v2/type/13/"}}]})})
+
      "https://pokeapi.co/api/v2/type/13/"
      (fn [_request]
        {:status 200
         :body (cheshire/generate-string
-               {:names {:language {:name "ja",
-                                   :url "https://pokeapi.co/api/v2/language/11/"},
-                        :name "でんき"},})})
+               {:names [{:language {:name "ja",
+                                    :url "https://pokeapi.co/api/v2/language/11/"},
+                         :name "でんき"}],})})
+
      "https://pokeapi.co/api/v2/type/electric/"
      (fn [_request]
        {:status 200
         :body (cheshire/generate-string
-               {:names {:language {:name "ja",
-                                   :url "https://pokeapi.co/api/v2/language/11/"},
-                        :name "でんき"},})})}
+               {:names [{:language {:name "ja",
+                                    :url "https://pokeapi.co/api/v2/language/11/"},
+                         :name "でんき"}],})})}
 
     (is (= {"pikachu" ["でんき"]}
-           (first (subject/get-pokemons :lang "ja"))))))
+           (subject/get-pokemons :lang "ja")))))
