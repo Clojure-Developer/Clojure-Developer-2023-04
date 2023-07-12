@@ -4,7 +4,7 @@
     [cheshire.core :refer [parse-string]]
     [clojure.core.async
      :as async
-     :refer [<!! >! <! chan go pipeline-async onto-chan! to-chan! close!]]))
+     :refer [<!! >! <! chan go pipeline-async onto-chan! to-chan! close! thread]]))
 
 (def base-url     "https://pokeapi.co/api/v2")
 (def pokemons-url (str base-url "/pokemon/"))
@@ -20,11 +20,20 @@
        (first)
        :name))
 
+(defn load-data
+  [url]
+  (-> (http/get url)
+      :body
+      (parse-string true)))
+
 (def get-data
-  (memoize (fn [url]
-             (-> (http/get url)
-                 :body
-                 (parse-string true)))))
+  (let [cache (atom {})]
+    (fn [url]
+      (if-let [cached-result (get @cache url)]
+        cached-result
+        (let [result (load-data url)]
+          (swap! cache assoc url result)
+          result)))))
 
 (defn get-pokemon-type-name
   [url lang]
@@ -42,7 +51,7 @@
                            (to-chan!))]
     (pipeline-async 1 out-ch (fn [url result-ch]
                                (go
-                                 (let [type-name (get-pokemon-type-name url lang)]
+                                 (let [type-name (<! (thread (get-pokemon-type-name url lang)))]
                                    (>! result-ch type-name)
                                    (close! result-ch))))
                     types-urls-ch)
@@ -75,9 +84,7 @@
 
     ; Асинхронно раскладываем урлы на покемонов
     (go (let [url (str pokemons-url "?limit=" limit)
-              pokemon-url-structures (-> (http/get url)
-                                         :body
-                                         (parse-string true)
+              pokemon-url-structures (-> (load-data url)
                                          :results)
               pokemons-urls (map :url pokemon-url-structures)]
           (onto-chan! pokemon-urls-ch pokemons-urls)))
