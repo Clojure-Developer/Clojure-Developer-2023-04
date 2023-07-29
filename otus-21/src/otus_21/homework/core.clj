@@ -126,6 +126,6 @@
        ;; Выбираем каталоги меньше определенного размера.
        (filter (fn [node]
                  (and (= (:type node) :dir)
-                      (< (:size node) size-limit))))
+                      (<= (:size node) size-limit))))
        (map :size)
        (reduce +)))
