@@ -65,62 +65,66 @@
 
 ;; ** walk
 
-(w/walk (fn [x] (if (number? x) (str x) x))
-        identity bin-tree)
+(comment
+  (w/walk (fn [x] (if (number? x) (str x) x))
+          identity bin-tree)
 
-(letfn [(sum [t]
-          (cond (coll? t)
-                (w/walk sum (partial reduce +) t)
+  (letfn [(sum [t]
+            (cond (coll? t)
+                  (w/walk sum (partial reduce +) t)
 
-                (nil? t) 0
+                  (nil? t) 0
 
-                true t))]
-  (sum bin-tree))
+                  true t))]
+    (sum bin-tree)))
 
 ;; ** prewalk/postwalk
 
-(w/prewalk str bin-tree)
-(w/postwalk
- (fn [x] (if (number? x) (str x) x))
- bin-tree)
+(comment
+  (w/prewalk str bin-tree)
+  (w/postwalk
+   (fn [x] (if (number? x) (str x) x))
+   bin-tree))
 
 ;; * clojure.zip
 
-(-> bin-tree
-    z/vector-zip
-    z/down
-    z/right
-    z/down
-    z/rightmost
-    z/down
-    (z/edit + 100)
-    z/root)
+(comment
+  (-> bin-tree
+      z/vector-zip
+      z/down
+      z/right
+      z/down
+      z/rightmost
+      z/down
+      (z/edit + 100)
+      z/root)
 
-(-> bin-tree
-    z/vector-zip
-    z/down
-    z/right
-    z/down)
+  (-> bin-tree
+      z/vector-zip
+      z/down
+      z/right
+      z/down))
 
 ;; FIXME: broken
-(loop [c (z/vector-zip bin-tree)]
-  (let [n (if (odd? (z/node c))
-            (z/edit c + 100)
-            c)]
-    (if (z/branch? n)
-      (recur (z/down n))
-      (loop [n (z/up n)
-             prev n]
-        (let [[found n]
-              (cond (nil? n)
-                    [true (z/root prev)]
+(comment
+  (loop [c (z/vector-zip bin-tree)]
+    (let [n (if (odd? (z/node c))
+              (z/edit c + 100)
+              c)]
+      (if (z/branch? n)
+        (recur (z/down n))
+        (loop [n (z/up n)
+               prev n]
+          (let [[found n]
+                (cond (nil? n)
+                      [true (z/root prev)]
 
-                    (nil? (z/right n))
-                    (recur (z/up n) n)
+                      (nil? (z/right n))
+                      (recur (z/up n) n)
 
-                    [false (z/right n)])]
-          (if found n
-              (recur n)))))))
+                      [false (z/right n)])]
+            (if found n
+                (recur n))))))))
 
 ;; ** zipper
 
@@ -131,13 +135,14 @@
    (fn [n _] n)
    :a))
 
-(-> gr-zipper
-    z/down
-    z/down
-    z/right
-    z/down
-    z/right
-    z/right
-    z/children)
+(comment
+  (-> gr-zipper
+      z/down
+      z/down
+      z/right
+      z/down
+      z/right
+      z/right
+      z/children))
 
 ;; * Поиск
