@@ -1,0 +1,33 @@
+document = (tag | spase)*
+
+<tag> = html-comment | html-tag
+
+html-comment = <comment-start> comment-content <comment-end>
+<comment-content> = #'.+?(?=-->)'
+<comment-start> = <'<!--'>
+<comment-end> = <'-->'>
+
+html-tag = tag-start (tag-self-close | (close-tag [spase] tag-content tag-close))
+
+<tag-start> = open-tag tag-name [spase attrs] [spase]
+tag-content = ([spase] (tag | text) [spase])*
+<tag-self-close> = <'/>' [spase]>
+<tag-close> = open-tag slash <tag-name> close-tag [spase]
+
+<open-tag> = <'<'>
+<close-tag> = <'>'>
+<tag-name> = #'[a-zA-Z0-9_-]+' | '!DOCTYPE' | '!doctype'
+
+attrs = (attr [spase])*
+<attr> = attr-w-value | attr-wo-value
+<attr-w-value> = attr-name <'='> attr-value
+<attr-wo-value> = attr-name
+<attr-name> = #'[a-zA-Z0-9_\-\:]+'
+<attr-value> = quot string quot
+
+text = #'[^<\n]+(?=<[\w\/])' | #'[^<]+(?=\n)'
+<spase> = <#'[ \t\n]+'>
+<word-with-digit> = #'[\w\d]+'
+<string> = #'[^"]*'
+<quot> = <'"'>
+<slash> = <'/'>

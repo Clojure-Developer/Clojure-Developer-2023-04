@@ -19,3 +19,4 @@ pom.xml.asc
 .portal
 
 !/otus-05/checkouts
+.DS_Store
