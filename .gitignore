@@ -17,5 +17,9 @@ pom.xml.asc
 .calva
 .lsp
 
+node_modules/
+.shadow-cljs/
+cljs-runtime/
+
 !/otus-05/checkouts
 .DS_Store

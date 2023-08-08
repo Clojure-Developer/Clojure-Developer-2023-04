@@ -1,0 +1,7 @@
+{:lein true
+ ; :source-paths and :dependencies are now ignored in this file
+ ; configure them via project.clj
+ :builds {:app {:target :browser
+                :output-dir "resources/public/js"
+                :modules {:main {:entries [url-shortener.frontend]
+                                 :init-fn url-shortener.frontend/init}}}}}

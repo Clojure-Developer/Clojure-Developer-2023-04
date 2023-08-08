@@ -9,7 +9,7 @@
 
 
 (def host
-  "http://otus-url/")
+  "http://localhost:8000/")
 
 
 (def db
@@ -38,8 +38,6 @@
         valid-idxs    (take-while #(> % 0) idx-sequence)
         code-sequence (map get-symbol-by-idx valid-idxs)]
     (string/join (reverse code-sequence))))
-
-
 
 ;; =============================================================================
 ;; String -> Number
@@ -80,6 +78,10 @@
 
 
 (defn get-all-urls []
-  (with-open [file (io/reader db)]
-    (-> (line-seq file)
-        vec)))
+  (let [urls (with-open [file (io/reader db)]
+               (-> (line-seq file)
+                   vec))]
+    (map-indexed (fn [idx url]
+                   {:url url
+                    :hash (id->url (inc idx))})
+                 urls)))

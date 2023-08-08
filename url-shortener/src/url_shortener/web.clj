@@ -1,9 +1,10 @@
 (ns url-shortener.web
   (:require
    [ring.adapter.jetty :refer [run-jetty]]
-   [ring.util.response :refer [response redirect not-found created]]
+   [ring.util.response :refer [response resource-response redirect not-found created]]
    [ring.middleware.reload :refer [wrap-reload]]
    [ring.middleware.params :refer [wrap-params]]
+   [ring.middleware.resource :refer [wrap-resource]]
    [ring.middleware.json :refer [wrap-json-response wrap-json-params]]
    [ring.middleware.keyword-params :refer [wrap-keyword-params]]
    [compojure.core :refer :all]
@@ -11,6 +12,9 @@
 
 
 (defroutes router
+  (GET "/" []
+    (resource-response "index.html" {:root "public"}))
+  
   (POST "/shorten" [url]
     (let [short-url (shortener/shorten-url url)]
       (created short-url {:url short-url})))
@@ -26,6 +30,7 @@
 
 (def app
   (-> #'router
+      (wrap-resource "public")
       wrap-params
       wrap-keyword-params
       wrap-json-params

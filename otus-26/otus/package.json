@@ -1,0 +1,11 @@
+{
+  "name": "otus",
+  "version": "0.0.1",
+  "private": true,
+  "devDependencies": {
+    "shadow-cljs": "2.25.2"
+  },
+  "dependencies": {
+    "nanoid": "^4.0.2"
+  }
+}
