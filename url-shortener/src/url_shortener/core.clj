@@ -1,7 +1,11 @@
 (ns url-shortener.core
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as string]))
+   [clojure.string :as string]
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :refer [as-unqualified-lower-maps]]
+   [next.jdbc.sql :as sql]
+   [honey.sql :as honey]))
 
 
 (def symbols
@@ -12,47 +16,42 @@
   "http://localhost:8000/")
 
 
-(def db
-  (io/as-file "url.txt"))
+(def db (jdbc/get-datasource {:dbname "database"
+                              :dbtype "h2"}))
 
+(def ^:private table-sql
+  (honey/format {:create-table [:urls :if-not-exists]
+                 :with-columns
+                 [[:id [:varchar 6] :primary-key]
+                  [:url [:varchar 4096] :not-null]]}))
 
 (defn init-storage []
-  (when-not (.exists db)
-    (.createNewFile db)))
+  (jdbc/with-transaction [tx db]
+    (jdbc/execute-one! tx table-sql)))
 
 
 ;; =============================================================================
-;; Number -> String
+;; URL -> Key
 ;; =============================================================================
 
-(defn get-idx [i]
+
+(defn ^:private get-idx [i]
   (Math/floor (/ i 62)))
 
 
-(defn get-symbol-by-idx [i]
+(defn ^:private get-symbol-by-idx [i]
   (get symbols (rem i 62)))
 
 
-(defn id->url [id]
+(defn ^:private int->key [id]
   (let [idx-sequence  (iterate get-idx id)
         valid-idxs    (take-while #(> % 0) idx-sequence)
         code-sequence (map get-symbol-by-idx valid-idxs)]
     (string/join (reverse code-sequence))))
 
-;; =============================================================================
-;; String -> Number
-;; =============================================================================
 
-
-(defn url->id [url]
-  (let [url-symbols (seq url)]
-    (reduce
-     (fn [id symbol]
-       (+ (* id 62)
-          (string/index-of symbols symbol)))
-     0
-     url-symbols)))
-
+(defn url->key [url]
+  (int->key (java.lang.Integer/toUnsignedLong (hash url))))
 
 
 ;; =============================================================================
@@ -61,27 +60,21 @@
 
 
 (defn shorten-url [url]
-  (spit db url :append true)
-  (spit db \newline :append true)
-
-  (with-open [file (io/reader db)]
-    (let [url-id (count (line-seq file))
-          hash   (id->url url-id)]
-      (str host hash))))
+  (let [key (url->key url)]
+    (sql/insert! db :urls {:id key :url url})
+    (str host key)))
 
 
-(defn find-long-url [hash]
-  (let [line-number (url->id hash)]
-    (with-open [file (io/reader db)]
-      (let [original-url (nth (line-seq file) (dec line-number))]
-        original-url))))
+(defn find-long-url [id]
+  (:URLS/URL (sql/get-by-id db :urls id)))
+
+
+(def ^:private query
+  (honey/format
+   {:select [[:id :hash] :url]
+    :from :urls}))
 
 
 (defn get-all-urls []
-  (let [urls (with-open [file (io/reader db)]
-               (-> (line-seq file)
-                   vec))]
-    (map-indexed (fn [idx url]
-                   {:url url
-                    :hash (id->url (inc idx))})
-                 urls)))
+  (sql/query db query
+             {:builder-fn as-unqualified-lower-maps}))

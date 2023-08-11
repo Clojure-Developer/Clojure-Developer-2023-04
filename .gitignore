@@ -23,3 +23,5 @@ cljs-runtime/
 
 !/otus-05/checkouts
 .DS_Store
+
+database.*.db

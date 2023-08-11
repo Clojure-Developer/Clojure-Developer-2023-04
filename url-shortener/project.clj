@@ -10,7 +10,12 @@
                  [ring/ring-jetty-adapter "1.10.0"]
                  [ring/ring-defaults "0.3.4"]
                  [ring/ring-json "0.5.1"]
-                 [compojure "1.7.0"]]
+                 [compojure "1.7.0"]
+
+                 ;; DB
+                 [com.github.seancorfield/next.jdbc "1.3.883"]
+                 [com.h2database/h2 "1.4.199"]
+                 [com.github.seancorfield/honeysql "2.4.1045"]]
 
   :profiles {:cljs
              {:dependencies
