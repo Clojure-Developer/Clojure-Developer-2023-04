@@ -1,0 +1,15 @@
+{:duct.profile/base
+ {:duct.core/project-ns otus-29
+
+  :duct.router/cascading
+  [#ig/ref [:otus-29.handler/example]]
+
+  :otus-29.handler/example {}}
+
+ :duct.profile/dev   #duct/include "dev"
+ :duct.profile/local #duct/include "local"
+ :duct.profile/prod  {}
+
+ :duct.module/logging {}
+ :duct.module.web/site
+ {}}
