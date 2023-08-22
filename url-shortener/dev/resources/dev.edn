@@ -1,0 +1,8 @@
+{:duct.database.sql/hikaricp
+ {:connection-uri "jdbc:h2:./database"}
+ 
+ :url-shortener.web/handler
+ {:host "http://localhost:8000/"}
+ 
+ :url-shortener.web/server
+ {:port 8000}}

@@ -1,0 +1,30 @@
+{:duct.profile/base
+ 
+ ;; Integrant Config
+ {:duct.core/project-ns url-shortener
+  
+  :url-shortener.web/handler
+  {:db #ig/ref :duct.database.sql/hikaricp}
+  
+  :url-shortener.web/server
+  {:handler #ig/ref :url-shortener.web/handler
+   :env #ig/ref :duct.core/environment}
+  
+  :duct.migrator/ragtime
+  {:migrations [#ig/ref :url-shortener.migrations/create-urls-table]}
+
+  [:duct.migrator.ragtime/sql :url-shortener.migrations/create-urls-table]
+  {:up   [#duct/resource "migrations/create-table-urls-2023-08-21.sql"]
+   :down [#duct/resource "migrations/delete-table-urls-2023-08-21.sql"]}}
+
+ ;; Profiles
+ :duct.profile/dev   #duct/include "dev"
+ :duct.profile/local #duct/include "local"
+ 
+ :duct.profile/prod
+ {:url-shortener.web/server
+  {:port #duct/env ["PORT" Int]}}
+ 
+ ;; Modules
+ :duct.module/logging {}
+ :duct.module/sql     {}}
