@@ -23,7 +23,7 @@
  
  :duct.profile/prod
  {:url-shortener.web/server
-  {:port #duct/env ["PORT" Int]}}
+  {:port #duct/env ["PORT" Int :or 8000]}}
  
  ;; Modules
  :duct.module/logging {}
