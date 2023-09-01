@@ -1,0 +1,21 @@
+FROM --platform=linux/amd64 clojure:openjdk-11-lein-2.9.5 as builder
+
+RUN mkdir /opt/app
+WORKDIR /opt/app
+
+COPY src src
+COPY project.clj project.clj
+
+RUN lein uberjar
+
+
+
+FROM --platform=linux/amd64 public.ecr.aws/lambda/java:11
+
+RUN mkdir /opt/app
+
+COPY --from=builder /opt/app/target/lambda.jar /opt/app/app.jar
+
+ENTRYPOINT [ "java", "-cp", "/opt/app/app.jar", "com.amazonaws.services.lambda.runtime.api.client.AWSLambda" ]
+
+CMD ["otus-30.lambda::handleRequest"]
