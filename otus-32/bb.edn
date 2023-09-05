@@ -1,0 +1,12 @@
+{:tasks
+ {hi
+  {:doc "Greets you"
+   :task (shell "echo 123")}
+
+  hihi
+  (do (run 'hi)
+      (run 'hi))
+
+  grep-me
+  (-> (shell {:out :string} "echo -n '123\n456\n")
+      (shell "grep 5"))}}

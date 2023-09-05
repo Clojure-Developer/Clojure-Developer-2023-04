@@ -1,0 +1,38 @@
+#+TITLE: Скрипты на Clojure, Babashka runtime
+
+#+begin_quote
+Познакомимся с проектом babashka для написания скриптов на Clojure;
+Научимся создавать command line interface для своих скриптов,
+автоматизировать рутинные задачи с использованием babashka tasks.
+#+end_quote
+
+* [[https://babashka.org/][Babashka]]
+
+Диалект Clojure, имеющий [[https://github.com/babashka/babashka#differences-with-clojure][некоторые отличия]] от оригинала.
+
+** Основы
+
+#+BEGIN_SRC shell :results verbatim
+echo "Hello" | bb -e '(str *input* ", World!")'
+
+bb '(+ 1 2 3)'
+#+END_SRC
+
+#+BEGIN_SRC shell :results verbatim
+echo "{:a 42 :b 100}" | \
+    bb -IO -e '(let [[{:keys [a b]} & _] *input*] {:result (+ a b)})'
+#+END_SRC
+
+** Вызов внешних команд
+
+#+BEGIN_SRC clojure :results output verbatim
+(println (:out (shell/sh "echo" "123")))
+#+END_SRC
+
+#+BEGIN_SRC clojure :results output verbatim
+(prn (shell/sh "echo" "123"))
+#+END_SRC
+
+** [[file:bb.edn][bb.edn]]
+
+*** Задачи
