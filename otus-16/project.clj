@@ -3,4 +3,4 @@
 
   :dependencies [[org.clojure/clojure "1.11.1"]]
 
-  :repl-options {:init-ns otus-16.core})
+  :repl-options {:init-ns otus-16.homework})
