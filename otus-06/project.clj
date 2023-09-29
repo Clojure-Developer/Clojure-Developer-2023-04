@@ -5,5 +5,6 @@
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [aero "1.1.6"]]
+  :main otus-06.homework
 
-  :repl-options {:init-ns otus-06.core})
+  :repl-options {:init-ns otus-06.homework})
