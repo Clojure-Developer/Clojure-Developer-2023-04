@@ -1,4 +1,7 @@
-(ns otus-06.homework)
+(ns otus-06.homework
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str])
+  (:gen-class))
 
 ;; Загрузить данные из трех файлов на диске.
 ;; Эти данные сформируют вашу базу данных о продажах.
@@ -94,3 +97,168 @@
 
 
 ;; Файлы находятся в папке otus-06/resources/homework
+
+;; *** Sales Menu ***
+;; ------------------
+;; 1. Display Customer Table
+;; 2. Display Product Table
+;; 3. Display Sales Table
+;; 4. Total Sales for Customer
+;; 5. Total Count for Product
+;; 6. Exit
+
+(defn display-rows
+  [rows]
+  (doseq [{id :id data :data} rows]
+    (printf "%s: %s\n" id data)))
+
+(defn load-table-data
+  [table-name]
+  (let [raw-rows (->> (str "homework/" table-name ".txt")
+                      io/resource
+                      slurp
+                      str/split-lines
+                      (map #(str/split % #"\|")))
+        rows (mapv
+               (fn [[id & data]] {:id id :data (vec data)})
+               raw-rows)
+        index (zipmap
+                (map :id rows)
+                (range))]
+    {:rows rows :index index}))
+
+(def read-cust-table (partial load-table-data 'cust))
+(def read-prod-table (partial load-table-data 'prod))
+(def read-sales-table (partial load-table-data 'sales))
+
+(defn enrich-sales-rows
+  [sales-rows customers products with-product-cost?]
+  (let [{customers-rows :rows customers-index :index} customers
+        {products-rows :rows products-index :index} products]
+    (mapv
+      (fn [{id :id [cid pid & other] :data}]
+        (let [c-idx (get customers-index cid)
+              p-idx (get products-index pid)
+              c-row (get customers-rows c-idx)
+              p-row (get products-rows p-idx)
+              c-name (get-in c-row [:data 0])
+              p-name (get-in p-row [:data 0])
+              p-cost (get-in p-row [:data 1])
+              data (if with-product-cost?
+                     (into [c-name p-name p-cost] other)
+                     (into [c-name p-name] other))]
+          {:id id :data data})) sales-rows)))
+
+(defn load-enriched-sales-table
+  [with-product-cost?]
+  (let [customers (read-cust-table)
+        products (read-prod-table)
+        sales (read-sales-table)
+        sales-rows (enrich-sales-rows (:rows sales) customers products with-product-cost?)]
+    (assoc sales :rows sales-rows)))
+
+(def read-enriched-sales-table (partial load-enriched-sales-table false))
+(def read-enriched-sales-table-with-product-cost (partial load-enriched-sales-table true))
+
+(defn calc-aggregation
+  [reader filter map reduce]
+  (let [{rows :rows} (reader)
+        aggregation (->> rows filter map reduce)]
+    aggregation))
+
+(defn calc-total-sales-for-customer
+  [customer-name]
+  (calc-aggregation
+    read-enriched-sales-table-with-product-cost
+    (partial filter #(= customer-name (get-in % [:data 0])))
+    (partial map (fn [{[_ _ cost qnt] :data}] (* (parse-double cost) (parse-long qnt))))
+    (partial reduce +)))
+
+(defn calc-total-count-for-product
+  [target-product-name]
+  (calc-aggregation
+    read-enriched-sales-table
+    (partial filter #(= target-product-name (get-in % [:data 1])))
+    (partial map #(parse-long (get-in % [:data 2])))
+    (partial reduce +)))
+
+(defn display-table
+  [reader]
+  (let [{rows :rows} (reader)]
+    (display-rows rows)))
+
+(defn display-customer-table []
+  (display-table read-cust-table))
+
+(defn display-product-table []
+  (display-table read-prod-table))
+
+(defn display-sales-table []
+  (display-table read-enriched-sales-table))
+
+(defn display-total-sales-for-customer
+  []
+  (println "Enter customer name: ")
+  (let [customer-name (read-line)]
+    (->> customer-name
+         calc-total-sales-for-customer
+         (format "%s: $%.2f" customer-name)
+         println)))
+(defn display-total-count-for-product
+  []
+  (println "Enter product name: ")
+  (let [product-name (read-line)]
+    (->> product-name
+         calc-total-count-for-product
+         (format "%s: %d" product-name)
+         println)))
+
+(defn goodbye []
+  (println "Goodbye")
+  (System/exit 0))
+
+(def menu
+  [{:name "Display Customer Table" :action display-customer-table}
+   {:name "Display Product Table" :action display-product-table}
+   {:name "Display Sales Table" :action display-sales-table}
+   {:name "Total Sales for Customer" :action display-total-sales-for-customer}
+   {:name "Total Count for Product" :action display-total-count-for-product}
+   {:name "Exit" :action goodbye}])
+
+(defn print-menu
+  [menu]
+  (println "*** Sales Menu ***")
+  (println "==================")
+  (doseq [i (range 0 (count menu))]
+    (printf "%s. %s\n" (inc i) (get-in menu [i :name]))))
+
+(defn execute-action
+  [menu menu-item-id]
+  (let [menu-item (get menu (dec menu-item-id))
+        {action :action} menu-item]
+    (action)))
+
+(defn choose-menu-item-prompt
+  [menu]
+  (print-menu menu)
+  (println)
+  (println "Enter an option?")
+  (let [input (read-line)
+        parse-result (try
+                       (let [menu-item-id (Integer/parseInt input)]
+                         [menu-item-id (<= 1 menu-item-id (inc (count menu)))])
+                       (catch Exception _ [input false]))]
+    (when (false? (second parse-result))
+      (println "Wrong menu option:" input "\n"))
+    parse-result))
+
+(defn execute-interactive-step
+  [menu]
+  (let [[id] (->> (repeatedly (partial choose-menu-item-prompt menu))
+                  (filter #(true? (second %)))
+                  (first))]
+    (execute-action menu id)
+    (println)))
+
+(defn -main []
+  (while true (execute-interactive-step menu)))
